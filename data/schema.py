@@ -3,21 +3,13 @@ Pydantic models for Customer and Order data structures.
 """
 from datetime import date
 from typing import Literal, List
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 
 class Customer(BaseModel):
     """Customer data model."""
-    customer_id: str = Field(..., pattern=r"^CUST\d{4}$")
-    name: str
-    email: EmailStr
-    segment: Literal["new", "returning", "vip", "at_risk"]
-    interests: List[str]
-    last_contact_date: date
-    created_at: date
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "customer_id": "CUST0001",
                 "name": "John Doe",
@@ -28,19 +20,21 @@ class Customer(BaseModel):
                 "created_at": "2023-06-01"
             }
         }
+    )
+    
+    customer_id: str = Field(..., pattern=r"^CUST\d{4}$")
+    name: str
+    email: EmailStr
+    segment: Literal["new", "returning", "vip", "at_risk"]
+    interests: List[str]
+    last_contact_date: date
+    created_at: date
 
 
 class Order(BaseModel):
     """Order data model."""
-    order_id: str = Field(..., pattern=r"^ORD\d{8}$")
-    customer_id: str = Field(..., pattern=r"^CUST\d{4}$")
-    order_date: date
-    amount: float = Field(..., gt=0)
-    product_category: str
-    channel: Literal["web", "app", "store"]
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "order_id": "ORD00000001",
                 "customer_id": "CUST0001",
@@ -50,3 +44,11 @@ class Order(BaseModel):
                 "channel": "web"
             }
         }
+    )
+    
+    order_id: str = Field(..., pattern=r"^ORD\d{8}$")
+    customer_id: str = Field(..., pattern=r"^CUST\d{4}$")
+    order_date: date
+    amount: float = Field(..., gt=0)
+    product_category: str
+    channel: Literal["web", "app", "store"]
