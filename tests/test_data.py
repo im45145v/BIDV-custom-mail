@@ -16,8 +16,8 @@ def test_generate_synthetic_data():
     assert len(customers_df) > 0, "Customers dataframe should not be empty"
     assert len(orders_df) > 0, "Orders dataframe should not be empty"
     
-    # Check expected number of customers
-    assert len(customers_df) == 25, "Should generate 25 customers"
+    # Check expected number of customers (updated to 1000)
+    assert len(customers_df) == 1000, "Should generate 1000 customers"
     
     # Check customers have required columns
     assert 'customer_id' in customers_df.columns
@@ -25,6 +25,10 @@ def test_generate_synthetic_data():
     assert 'email' in customers_df.columns
     assert 'segment' in customers_df.columns
     assert 'interests' in customers_df.columns
+    assert 'engagement_score' in customers_df.columns
+    assert 'buying_behavior' in customers_df.columns
+    assert 'pain_points' in customers_df.columns
+    assert 'lifetime_value' in customers_df.columns
     
     # Check orders have required columns
     assert 'order_id' in orders_df.columns

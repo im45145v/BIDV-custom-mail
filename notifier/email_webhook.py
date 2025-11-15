@@ -1,9 +1,11 @@
 """
 Email webhook client for sending reports via Google Apps Script.
+Enhanced with sales pitch support and attachment handling.
 Posts email data to a deployed Apps Script web app.
 """
 import logging
 from typing import Optional, Dict, Any, List
+from pathlib import Path
 import requests
 
 import config
@@ -15,7 +17,9 @@ def send_email_webhook(
     to_email: str,
     subject: str,
     html_body: str,
-    attachments: Optional[List[str]] = None
+    attachments: Optional[List[Dict[str, str]]] = None,
+    customer_name: Optional[str] = None,
+    segment: Optional[str] = None
 ) -> bool:
     """
     Send email via Google Apps Script webhook.
@@ -24,7 +28,9 @@ def send_email_webhook(
         to_email: Recipient email address
         subject: Email subject
         html_body: HTML email body
-        attachments: Optional list of attachment URLs
+        attachments: Optional list of attachment dicts with 'name', 'url', 'mimeType'
+        customer_name: Optional customer name for tracking
+        segment: Optional customer segment for happiness tracking
     
     Returns:
         True if successful, False otherwise
@@ -34,7 +40,9 @@ def send_email_webhook(
         ...     "user@example.com",
         ...     "Weekly Report",
         ...     "<h1>Hello</h1>",
-        ...     ["https://example.com/report.pdf"]
+        ...     [{"name": "report.pdf", "url": "https://example.com/report.pdf", "mimeType": "application/pdf"}],
+        ...     "John Doe",
+        ...     "vip"
         ... )
     """
     if not config.APPS_SCRIPT_WEBHOOK_URL:
@@ -48,7 +56,15 @@ def send_email_webhook(
         "attachments": attachments or []
     }
     
+    # Add optional tracking fields for the fun Apps Script
+    if customer_name:
+        payload["customerName"] = customer_name
+    if segment:
+        payload["segment"] = segment
+    
     try:
+        logger.info(f"Sending email to {to_email} with {len(attachments or [])} attachments")
+        
         response = requests.post(
             config.APPS_SCRIPT_WEBHOOK_URL,
             json=payload,
@@ -60,10 +76,12 @@ def send_email_webhook(
         result = response.json()
         
         if result.get('success'):
-            logger.info(f"Email sent successfully to {to_email}")
+            logger.info(f"✓ Email sent successfully to {to_email}")
+            if 'happinessLevel' in result:
+                logger.info(f"  Happiness Level: {result['happinessLevel']}")
             return True
         else:
-            logger.error(f"Email sending failed: {result.get('error', 'Unknown error')}")
+            logger.error(f"✗ Email sending failed: {result.get('error', 'Unknown error')}")
             return False
             
     except requests.exceptions.RequestException as e:
@@ -159,7 +177,66 @@ def send_customer_report(
         to_email=customer_email,
         subject=subject,
         html_body=html_body,
-        attachments=charts_urls or []
+        attachments=charts_urls or [],
+        customer_name=customer_name,
+        segment=segment
+    )
+
+
+def send_sales_pitch_email(
+    customer_name: str,
+    customer_email: str,
+    segment: str,
+    pitch_html: str,
+    subject: Optional[str] = None,
+    attachment_urls: Optional[List[str]] = None
+) -> bool:
+    """
+    Send sales pitch email with rich content and attachments.
+    
+    Args:
+        customer_name: Customer's name
+        customer_email: Customer's email
+        segment: Customer segment
+        pitch_html: Pre-formatted HTML pitch content
+        subject: Optional custom subject line
+        attachment_urls: Optional list of attachment URLs
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    if not subject:
+        subject = f"🎁 Special Offer for {customer_name}"
+    
+    # Format attachments for Apps Script
+    attachments = []
+    if attachment_urls:
+        for i, url in enumerate(attachment_urls):
+            # Try to determine file type from URL
+            file_ext = Path(url).suffix.lower()
+            mime_types = {
+                '.pdf': 'application/pdf',
+                '.png': 'image/png',
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.mp4': 'video/mp4',
+                '.zip': 'application/zip'
+            }
+            mime_type = mime_types.get(file_ext, 'application/octet-stream')
+            
+            attachments.append({
+                'name': f'attachment_{i+1}{file_ext}',
+                'url': url,
+                'mimeType': mime_type
+            })
+    
+    return send_email_webhook(
+        to_email=customer_email,
+        subject=subject,
+        html_body=pitch_html,
+        attachments=attachments,
+        customer_name=customer_name,
+        segment=segment
     )
 
 
