@@ -4,6 +4,12 @@ Creates personalized sales pitches and recommendations based on customer pattern
 """
 from typing import Dict, Any, List
 import random
+import logging
+
+# Local notifier client
+from notifier import email_webhook
+
+logger = logging.getLogger(__name__)
 
 
 def generate_sales_pitch(
@@ -61,23 +67,23 @@ def _generate_subject_line(segment: str, buying_behavior: str, interests: List[s
     """Generate personalized email subject line."""
     templates = {
         'vip': [
-            f"🌟 Exclusive VIP Offer: Premium {interests[0].title()} Collection",
+            f"Exclusive VIP Offer: Premium {interests[0].title()} Collection",
             f"Your VIP Access: New {interests[0].title()} Arrivals",
-            "🎁 Special Treat for Our Most Valued Customer",
+            "Special Treat for Our Most Valued Customer",
         ],
         'returning': [
             f"Welcome Back! New {interests[0].title()} Just For You",
             f"We Missed You! Fresh {interests[0].title()} Deals Inside",
-            "🎯 Handpicked Recommendations Based on Your Preferences",
+            "Handpicked Recommendations Based on Your Preferences",
         ],
         'new': [
             f"Welcome! Discover Amazing {interests[0].title()} Deals",
             f"Get Started: Your {interests[0].title()} Journey Begins",
-            "👋 Welcome to the Community! Special First-Time Offer",
+            "Welcome to the Community! Special First-Time Offer",
         ],
         'at_risk': [
             f"We Want You Back! Special {interests[0].title()} Offer",
-            "🔥 Don't Miss Out: Exclusive Come-Back Deal",
+            "Don't Miss Out: Exclusive Come-Back Deal",
             f"We've Got Something Special for You in {interests[0].title()}",
         ]
     }
@@ -90,7 +96,7 @@ def _generate_subject_line(segment: str, buying_behavior: str, interests: List[s
 def _generate_opening(customer_name: str, segment: str, engagement_score: int) -> str:
     """Generate personalized opening."""
     if engagement_score > 80:
-        return f"Hi {customer_name}! 👋\n\nIt's always a pleasure connecting with our most engaged customers!"
+        return f"Hi {customer_name}!\n\nIt's always a pleasure connecting with our most engaged customers!"
     elif engagement_score > 50:
         return f"Hello {customer_name}!\n\nWe hope you're doing great! We have something exciting to share."
     elif segment == 'at_risk':
@@ -112,32 +118,32 @@ def _generate_pitch_body(
     # Address pain points
     if 'budget_conscious' in pain_points or 'price_sensitive' in pain_points:
         body_parts.append(
-            "💰 We understand value matters to you. That's why we're offering exclusive "
+            "We understand value matters to you. That's why we're offering exclusive "
             f"discounts on {interests[0]} items that match your preferences perfectly."
         )
     
     if 'time_constrained' in pain_points:
         body_parts.append(
-            "⏰ Save time with our quick checkout process and express delivery options. "
+            "Save time with our quick checkout process and express delivery options. "
             "Get what you need, when you need it."
         )
     
     if 'quality_focused' in pain_points:
         body_parts.append(
-            "✨ Premium quality is our priority. Every product we recommend meets the "
+            "Premium quality is our priority. Every product we recommend meets the "
             "highest standards and comes with our satisfaction guarantee."
         )
     
     # Add personalized recommendations based on interests
     body_parts.append(
-        f"\n🎯 Based on your interest in {', '.join(interests[:2])}, we've curated "
+        f"\nBased on your interest in {', '.join(interests[:2])}, we've curated "
         f"a selection that we think you'll love:"
     )
     
     # Add segment-specific value proposition
     if segment == 'vip':
         body_parts.append(
-            "\n🌟 As a VIP customer, you get:\n"
+            "\nAs a VIP customer, you get:\n"
             "• Priority access to new releases\n"
             "• Exclusive member-only pricing\n"
             "• Complimentary express shipping\n"
@@ -145,21 +151,21 @@ def _generate_pitch_body(
         )
     elif segment == 'returning':
         body_parts.append(
-            "\n💙 As a valued returning customer:\n"
+            "\nAs a valued returning customer:\n"
             "• Special loyalty rewards points\n"
             "• Early access to sales\n"
             "• Personalized product recommendations"
         )
     elif segment == 'new':
         body_parts.append(
-            "\n🎉 Welcome bonus for new members:\n"
+            "\nWelcome bonus for new members:\n"
             "• 20% off your next purchase\n"
             "• Free shipping on orders over $50\n"
             "• Access to our exclusive community"
         )
     elif segment == 'at_risk':
         body_parts.append(
-            "\n💝 We want to win you back with:\n"
+            "\nWe want to win you back with:\n"
             "• Extra 30% discount on your favorite categories\n"
             "• No-questions-asked returns\n"
             "• Free premium membership for 3 months"
@@ -168,17 +174,17 @@ def _generate_pitch_body(
     # Add buying behavior specific messaging
     if buying_behavior == 'impulse_buyer':
         body_parts.append(
-            "\n⚡ Limited time offer! These deals won't last long. "
+            "\nLimited time offer! These deals won't last long. "
             "Grab them while you can!"
         )
     elif buying_behavior == 'researcher':
         body_parts.append(
-            "\n📊 We've included detailed specifications and customer reviews "
+            "\nWe've included detailed specifications and customer reviews "
             "to help you make an informed decision."
         )
     elif buying_behavior == 'bargain_hunter':
         body_parts.append(
-            "\n🏷️ Hot deals alert! Save up to 50% on selected items. "
+            "\nHot deals alert! Save up to 50% on selected items. "
             "Best prices guaranteed!"
         )
     
@@ -188,14 +194,14 @@ def _generate_pitch_body(
 def _generate_cta(segment: str, buying_behavior: str) -> str:
     """Generate call-to-action."""
     ctas = {
-        'impulse_buyer': "🛒 Shop Now - Limited Stock Available!",
-        'researcher': "📖 Explore Our Collection & Read Reviews",
-        'bargain_hunter': "💸 See All Deals - Save Big Today!",
-        'loyal': "🎁 View Your Exclusive Offers",
-        'seasonal': "🌟 Check Out This Season's Must-Haves"
+        'impulse_buyer': "Shop Now - Limited Stock Available!",
+        'researcher': "Explore Our Collection & Read Reviews",
+        'bargain_hunter': "See All Deals - Save Big Today!",
+        'loyal': "View Your Exclusive Offers",
+        'seasonal': "Check Out This Season's Must-Haves"
     }
     
-    cta = ctas.get(buying_behavior, "🔍 Discover Your Perfect Match")
+    cta = ctas.get(buying_behavior, "Discover Your Perfect Match")
     
     return f"{cta}\n\n[View Personalized Recommendations] [Shop Now] [Learn More]"
 
@@ -207,19 +213,19 @@ def _generate_closing(customer_name: str, segment: str) -> str:
             f"Thank you for being an exceptional customer, {customer_name}! "
             "Your satisfaction is our top priority.\n\n"
             "Best regards,\n"
-            "Your Dedicated Account Team 🌟"
+            "Your Dedicated Account Team"
         )
     elif segment == 'at_risk':
         return (
             f"We truly value your business, {customer_name}, and hope to serve you again soon.\n\n"
             "Warmly,\n"
-            "The Customer Success Team 💙"
+            "The Customer Success Team"
         )
     else:
         return (
             f"Happy shopping, {customer_name}! We're here if you need anything.\n\n"
             "Best wishes,\n"
-            "Your Customer Care Team 😊"
+            "Your Customer Care Team"
         )
 
 
@@ -311,7 +317,7 @@ def generate_email_template_with_pitch(
     <body>
         <div class="container">
             <div class="header">
-                <h1 style="margin: 0;">💝 {pitch['subject']}</h1>
+                <h1 style="margin: 0;">{pitch['subject']}</h1>
             </div>
             
             <div class="content">
@@ -320,13 +326,13 @@ def generate_email_template_with_pitch(
                 <div style="margin: 25px 0; white-space: pre-line;">{pitch['body']}</div>
                 
                 <div class="recommendations">
-                    <h3 style="color: #333; margin-top: 0;">🎁 Your Personalized Recommendations:</h3>
+                    <h3 style="color: #333; margin-top: 0;">Your Personalized Recommendations:</h3>
                     {recommendations_html}
                 </div>
                 
                 <div style="text-align: center; margin: 30px 0;">
-                    <a href="#" class="cta-button">🛍️ Shop Now</a>
-                    <a href="#" class="cta-button" style="background: #28a745;">📱 View in App</a>
+                    <a href="#" class="cta-button">Shop Now</a>
+                    <a href="#" class="cta-button" style="background: #28a745;">View in App</a>
                 </div>
                 
                 <div style="white-space: pre-line; margin-top: 30px;">{pitch['closing']}</div>
@@ -343,3 +349,64 @@ def generate_email_template_with_pitch(
     """
     
     return template
+
+
+def generate_and_send_pitch(
+    customer_name: str,
+    customer_email: str,
+    segment: str,
+    interests: List[str],
+    pain_points: List[str],
+    buying_behavior: str,
+    engagement_score: int,
+    kpis: Dict[str, Any],
+    attachment_urls: List[str] | None = None
+) -> bool:
+    """
+    Generate a personalized sales pitch, render the HTML email, and send it via the webhook client.
+
+    Returns True on success, False otherwise.
+    """
+    try:
+        logger.info("Generating sales pitch for %s (segment=%s)", customer_email, segment)
+
+        pitch = generate_sales_pitch(
+            customer_name,
+            segment,
+            interests,
+            pain_points,
+            buying_behavior,
+            engagement_score,
+            kpis
+        )
+
+        recommendations = generate_recommendations(interests, kpis, segment)
+
+        html_body = generate_email_template_with_pitch(
+            customer_name=customer_name,
+            pitch=pitch,
+            recommendations=recommendations,
+            kpis=kpis
+        )
+
+        subject = pitch.get('subject') or f"Personalized Offer for {customer_name}"
+
+        success = email_webhook.send_sales_pitch_email(
+            customer_name=customer_name,
+            customer_email=customer_email,
+            segment=segment,
+            pitch_html=html_body,
+            subject=subject,
+            attachment_urls=attachment_urls
+        )
+
+        if success:
+            logger.info("Pitch successfully sent to %s", customer_email)
+            return True
+        else:
+            logger.error("Failed to send pitch to %s", customer_email)
+            return False
+
+    except Exception as e:
+        logger.exception("Error generating or sending sales pitch: %s", e)
+        return False

@@ -30,7 +30,7 @@ from notifier import email_webhook
 # Page configuration
 st.set_page_config(
     page_title="AI Sales Pitch Dashboard",
-    page_icon="📊",
+    page_icon=None,
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -104,7 +104,7 @@ def add_log(message: str, level: str = "info"):
     if level == "error":
         logger.error(message)
     elif level == "success":
-        logger.info(f"✓ {message}")
+        logger.info(message)
     else:
         logger.info(message)
 
@@ -126,20 +126,20 @@ def main():
     initialize_session_state()
     
     # Header
-    st.markdown('<div class="main-header">📊 AI-Powered Sales Pitch Dashboard</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">🎯 AI-Powered Sales Pitch Dashboard</div>', unsafe_allow_html=True)
     st.markdown("**Personalized Sales Intelligence with Advanced Analytics & Customer Insights**")
     st.markdown("---")
     
     # Sidebar
     with st.sidebar:
-        st.header("🎛️ Control Panel")
+        st.header("⚙️ Control Panel")
         
-        st.subheader("📁 Data Management")
+        st.subheader("🗂 Data Management")
         
         # Data generation and upload
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("🔄 Generate Data", use_container_width=True):
+            if st.button("Generate Data ⚡", width='stretch'):
                 with st.spinner("Generating 1000 customer records..."):
                     try:
                         customers_df, orders_df = generator.generate_synthetic_data()
@@ -153,7 +153,7 @@ def main():
                         st.error(f"Error: {e}")
         
         with col2:
-            if st.button("📥 Reload Data", use_container_width=True):
+            if st.button("Reload Data", width='stretch'):
                 st.session_state.customers_df = None
                 st.session_state.orders_df = None
                 load_data_if_needed()
@@ -178,7 +178,7 @@ def main():
                     st.error(f"Error loading files: {e}")
         
         # Download example dataset
-        if st.button("💾 Download Example Dataset"):
+        if st.button("Download Example Dataset"):
             try:
                 ex_cust, ex_ord = generator.create_example_dataset()
                 
@@ -189,19 +189,19 @@ def main():
                 col_a, col_b = st.columns(2)
                 with col_a:
                     st.download_button(
-                        "📥 Customers.csv",
+                        "Customers.csv",
                         cust_csv,
                         "example_customers.csv",
                         "text/csv",
-                        use_container_width=True
+                        width='stretch'
                     )
                 with col_b:
                     st.download_button(
-                        "📥 Orders.csv",
+                        "Orders.csv",
                         ord_csv,
                         "example_orders.csv",
                         "text/csv",
-                        use_container_width=True
+                        width='stretch'
                     )
             except Exception as e:
                 st.error(f"Error creating example: {e}")
@@ -213,7 +213,7 @@ def main():
         
         # Customer selection
         if st.session_state.customers_df is not None:
-            st.subheader("👤 Select Customer")
+            st.subheader("Select Customer")
             
             customers_df = st.session_state.customers_df
             customer_options = customers_df['customer_id'].tolist()
@@ -232,7 +232,7 @@ def main():
         st.markdown("---")
         
         # AI options
-        st.subheader("🤖 AI Options")
+        st.subheader("AI Options")
         use_openai = st.checkbox("Use OpenAI (DALL-E)", value=False, help="Requires OPENAI_API_KEY in .env")
         use_gemini = st.checkbox("Use Gemini", value=False, help="Requires GOOGLE_API_KEY in .env")
         
@@ -240,27 +240,30 @@ def main():
         
         # Actions
         if st.session_state.selected_customer_id:
-            st.subheader("⚡ Actions")
+            st.subheader("Actions")
             
-            if st.button("📝 Generate Sales Pitch", use_container_width=True):
+            if st.button("Generate Sales Pitch ✉️", width='stretch'):
                 generate_sales_pitch_action(st.session_state.selected_customer_id)
             
-            if st.button("🔊 Generate Audio", use_container_width=True):
+            if st.button("Generate Audio 🔊", width='stretch'):
                 generate_audio_action(st.session_state.selected_customer_id)
             
-            if st.button("🎬 Generate Video", use_container_width=True):
+            if st.button("Generate Video 🎬", width='stretch'):
                 generate_video_action(st.session_state.selected_customer_id, use_openai, use_gemini)
             
-            if st.button("📧 Send Email", use_container_width=True):
+            if st.button("Send Sales Pitch ✉️", width='stretch'):
+                send_sales_pitch_action(st.session_state.selected_customer_id)
+
+            if st.button("Send Email ✉️", width='stretch'):
                 send_email_action(st.session_state.selected_customer_id)
     
     # Main content - Tabs
     if st.session_state.customers_df is None:
-        st.info("👈 Click 'Generate Data' or 'Upload Custom Dataset' in the sidebar to get started.")
+        st.info("Click 'Generate Data' or 'Upload Custom Dataset' in the sidebar to get started.")
         return
     
     # Create tabs
-    tab1, tab2 = st.tabs(["👤 Customer View", "📊 All Users Analytics"])
+    tab1, tab2 = st.tabs(["Customer View", "📊 All Users Analytics"])
     
     with tab1:
         display_customer_view()
@@ -269,17 +272,17 @@ def main():
         display_all_users_analytics()
     
     # Display logs at bottom
-    with st.expander("📋 Activity Log", expanded=False):
+    with st.expander("Activity Log", expanded=False):
         if st.session_state.logs:
             for log_entry in reversed(st.session_state.logs[-20:]):  # Show last 20
                 level = log_entry['level']
                 message = log_entry['message']
                 if level == "error":
-                    st.markdown(f'<span class="status-error">❌ {message}</span>', unsafe_allow_html=True)
+                    st.markdown(f'<span class="status-error">ERROR: {message}</span>', unsafe_allow_html=True)
                 elif level == "success":
-                    st.markdown(f'<span class="status-success">✅ {message}</span>', unsafe_allow_html=True)
+                    st.markdown(f'<span class="status-success">SUCCESS: {message}</span>', unsafe_allow_html=True)
                 else:
-                    st.markdown(f'<span class="status-info">ℹ️ {message}</span>', unsafe_allow_html=True)
+                    st.markdown(f'<span class="status-info">INFO: {message}</span>', unsafe_allow_html=True)
         else:
             st.write("No activity yet.")
 
@@ -287,7 +290,7 @@ def main():
 def display_customer_view():
     """Display customer-specific view."""
     if not st.session_state.selected_customer_id:
-        st.info("👈 Select a customer from the sidebar to view their profile.")
+        st.info("Select a customer from the sidebar to view their profile.")
         return
     
     display_customer_dashboard(st.session_state.selected_customer_id)
@@ -349,7 +352,7 @@ def display_all_users_analytics():
         st.subheader("🔥 Customer Journey Funnel")
         try:
             fig_funnel = visuals.create_funnel_chart(customers_df, orders_df)
-            st.plotly_chart(fig_funnel, use_container_width=True)
+            st.plotly_chart(fig_funnel, width='stretch')
         except Exception as e:
             st.error(f"Error creating funnel chart: {e}")
     
@@ -365,7 +368,7 @@ def display_all_users_analytics():
     st.subheader("🔥 Engagement Heatmap: Segment vs Buying Behavior")
     try:
         fig_heatmap = visuals.create_engagement_heatmap(customers_df)
-        st.plotly_chart(fig_heatmap, use_container_width=True)
+        st.plotly_chart(fig_heatmap, width='stretch')
     except Exception as e:
         st.error(f"Error creating heatmap: {e}")
     
@@ -378,7 +381,7 @@ def display_all_users_analytics():
         st.subheader("💎 Lifetime Value Distribution")
         try:
             fig_ltv = visuals.create_ltv_distribution(customers_df)
-            st.plotly_chart(fig_ltv, use_container_width=True)
+            st.plotly_chart(fig_ltv, width='stretch')
         except Exception as e:
             st.error(f"Error creating LTV chart: {e}")
     
@@ -386,7 +389,7 @@ def display_all_users_analytics():
         st.subheader("🎯 Engagement vs Value")
         try:
             fig_scatter = visuals.create_customer_value_scatter(customers_df, orders_df)
-            st.plotly_chart(fig_scatter, use_container_width=True)
+            st.plotly_chart(fig_scatter, width='stretch')
         except Exception as e:
             st.error(f"Error creating scatter plot: {e}")
     
@@ -396,7 +399,7 @@ def display_all_users_analytics():
     st.subheader("🕸️ Segment Performance Comparison")
     try:
         fig_radar = visuals.create_segment_comparison_chart(customers_df, orders_df)
-        st.plotly_chart(fig_radar, use_container_width=True)
+        st.plotly_chart(fig_radar, width='stretch')
     except Exception as e:
         st.error(f"Error creating radar chart: {e}")
     
@@ -415,7 +418,7 @@ def display_all_users_analytics():
         st.subheader("📈 Monthly Revenue Trends")
         try:
             fig_monthly = visuals.create_monthly_trend_comparison(orders_df)
-            st.plotly_chart(fig_monthly, use_container_width=True)
+            st.plotly_chart(fig_monthly, width='stretch')
         except Exception as e:
             st.error(f"Error creating monthly trend: {e}")
     
@@ -425,7 +428,7 @@ def display_all_users_analytics():
     st.subheader("👥 Customer Retention Analysis")
     try:
         fig_cohort = visuals.create_cohort_retention_chart(customers_df, orders_df)
-        st.plotly_chart(fig_cohort, use_container_width=True)
+        st.plotly_chart(fig_cohort, width='stretch')
     except Exception as e:
         st.error(f"Error creating cohort chart: {e}")
     
@@ -459,7 +462,7 @@ def display_all_users_analytics():
                     'engagement_score', 'buying_behavior', 'response_rate']
     st.dataframe(
         filtered_df[display_cols].head(50),
-        use_container_width=True,
+        width='stretch',
         hide_index=True
     )
 
@@ -493,9 +496,9 @@ def generate_sales_pitch_action(customer_id: str):
             )
             
             # Display pitch
-            st.success("✅ Sales pitch generated successfully!")
+            st.success("Sales pitch generated successfully!")
             
-            with st.expander("📝 View Generated Sales Pitch", expanded=True):
+            with st.expander("View Generated Sales Pitch", expanded=True):
                 st.write("**Subject Line:**")
                 st.info(pitch['subject'])
                 
@@ -520,7 +523,7 @@ def generate_sales_pitch_action(customer_id: str):
             
         except Exception as e:
             add_log(f"Sales pitch generation error: {e}", "error")
-            st.error(f"❌ Error: {e}")
+            st.error(f"Error: {e}")
 
 
 def display_customer_dashboard(customer_id: str):
@@ -540,17 +543,13 @@ def display_customer_dashboard(customer_id: str):
     col1, col2, col3 = st.columns([2, 2, 1])
     
     with col1:
-        st.subheader(f"👤 {customer['name']}")
+        st.subheader(f"{customer['name']}")
         st.write(f"**ID:** {customer['customer_id']}")
         st.write(f"**Email:** {customer['email']}")
     
     with col2:
-        # Segment badge
-        segment_colors = {
-            'new': '🟢', 'returning': '🔵', 
-            'vip': '🟡', 'at_risk': '🔴'
-        }
-        st.write(f"**Segment:** {segment_colors.get(customer['segment'], '⚪')} {customer['segment'].upper()}")
+        # Segment label
+        st.write(f"**Segment:** {customer['segment'].capitalize()}")
         st.write(f"**Interests:** {', '.join(customer['interests'])}")
     
     with col3:
@@ -560,7 +559,7 @@ def display_customer_dashboard(customer_id: str):
     st.markdown("---")
     
     # KPIs
-    st.subheader("📊 Key Performance Indicators")
+    st.subheader("Key Performance Indicators")
     
     kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4)
     
@@ -599,7 +598,7 @@ def display_customer_dashboard(customer_id: str):
     st.markdown("---")
     
     # Charts
-    st.subheader("📈 Analytics")
+    st.subheader("Analytics")
     
     chart_col1, chart_col2 = st.columns(2)
     
@@ -608,7 +607,7 @@ def display_customer_dashboard(customer_id: str):
         trend_df = analysis.get_recent_trend(customer_id, orders_df, days=90)
         if len(trend_df) > 0:
             fig = visuals.create_plotly_spend_chart(trend_df, customer['name'])
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         else:
             st.info("No recent orders to display.")
     
@@ -620,21 +619,21 @@ def display_customer_dashboard(customer_id: str):
             fig = px.bar(category_df, x='amount', y='category', orientation='h',
                         labels={'amount': 'Spend (₹)', 'category': 'Category'})
             fig.update_layout(showlegend=False)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         else:
             st.info("No orders to display.")
     
     st.markdown("---")
     
     # Media section
-    st.subheader("🎬 Generated Media")
+    st.subheader("Generated Media")
     
     subdirs = config.get_customer_subdirs(customer_id)
     
     media_col1, media_col2 = st.columns(2)
     
     with media_col1:
-        st.write("**🔊 Audio Summary**")
+        st.write("**Audio Summary**")
         audio_path = subdirs['audio'] / "summary.mp3"
         if audio_path.exists():
             st.audio(str(audio_path))
@@ -643,7 +642,7 @@ def display_customer_dashboard(customer_id: str):
             st.info("No audio generated yet. Click 'Generate Audio' in the sidebar.")
     
     with media_col2:
-        st.write("**📹 Video Report**")
+        st.write("**Video Report**")
         video_path = subdirs['video'] / f"report_{customer_id}.mp4"
         if video_path.exists():
             st.video(str(video_path))
@@ -652,7 +651,7 @@ def display_customer_dashboard(customer_id: str):
             # Download button
             with open(video_path, 'rb') as f:
                 st.download_button(
-                    label="⬇️ Download Video",
+                    label="Download Video",
                     data=f,
                     file_name=f"report_{customer_id}.mp4",
                     mime="video/mp4"
@@ -682,11 +681,11 @@ def generate_audio_action(customer_id: str):
             
             if audio_path:
                 add_log(f"Audio generated for {customer['name']}", "success")
-                st.success(f"✅ Audio generated: {audio_path.name}")
+                st.success(f"Audio generated: {audio_path.name}")
                 st.rerun()
             else:
                 add_log(f"Failed to generate audio for {customer['name']}", "error")
-                st.error("❌ Failed to generate audio")
+                st.error("Failed to generate audio")
                 
         except Exception as e:
             add_log(f"Audio generation error: {e}", "error")
@@ -753,15 +752,15 @@ def generate_video_action(customer_id: str, use_openai: bool, use_gemini: bool):
             
             if video_path:
                 add_log(f"Video generated for {customer['name']}", "success")
-                st.success(f"✅ Video generated: {video_path.name}")
+                st.success(f"Video generated: {video_path.name}")
                 st.rerun()
             else:
                 add_log(f"Failed to generate video for {customer['name']}", "error")
-                st.error("❌ Failed to generate video")
+                st.error("Failed to generate video")
                 
         except Exception as e:
             add_log(f"Video generation error: {e}", "error")
-            st.error(f"❌ Error: {e}")
+            st.error(f"Error: {e}")
             import traceback
             st.code(traceback.format_exc())
 
@@ -771,7 +770,7 @@ def send_email_action(customer_id: str):
     with st.spinner("Sending email..."):
         try:
             if not config.APPS_SCRIPT_WEBHOOK_URL:
-                st.warning("⚠️ Apps Script webhook URL not configured. Set APPS_SCRIPT_WEBHOOK_URL in .env file.")
+                st.warning("Apps Script webhook URL not configured. Set APPS_SCRIPT_WEBHOOK_URL in .env file.")
                 add_log("Email sending skipped: webhook URL not configured", "error")
                 return
             
@@ -792,14 +791,53 @@ def send_email_action(customer_id: str):
             
             if success:
                 add_log(f"Email sent to {customer['email']}", "success")
-                st.success(f"✅ Email sent to {customer['email']}")
+                st.success(f"Email sent to {customer['email']}")
             else:
                 add_log(f"Failed to send email to {customer['email']}", "error")
-                st.error("❌ Failed to send email")
+                st.error("Failed to send email")
                 
         except Exception as e:
             add_log(f"Email sending error: {e}", "error")
-            st.error(f"❌ Error: {e}")
+            st.error(f"Error: {e}")
+
+
+def send_sales_pitch_action(customer_id: str):
+    """Generate a sales pitch and send it as an email via the Apps Script webhook."""
+    with st.spinner("Generating and sending sales pitch..."):
+        try:
+            if not config.APPS_SCRIPT_WEBHOOK_URL:
+                st.warning("Apps Script webhook URL not configured. Set APPS_SCRIPT_WEBHOOK_URL in .env file.")
+                add_log("Sales pitch sending skipped: webhook URL not configured", "error")
+                return
+
+            customers_df = st.session_state.customers_df
+            orders_df = st.session_state.orders_df
+
+            customer = analysis.get_customer_profile(customer_id, customers_df)
+            kpis = analysis.calculate_customer_kpis(customer_id, customers_df, orders_df)
+
+            success = sales_pitch.generate_and_send_pitch(
+                customer_name=customer['name'],
+                customer_email=customer['email'],
+                segment=customer['segment'],
+                interests=customer.get('interests', []),
+                pain_points=customer.get('pain_points', []),
+                buying_behavior=customer.get('buying_behavior', 'researcher'),
+                engagement_score=customer.get('engagement_score', 50),
+                kpis=kpis,
+                attachment_urls=None
+            )
+
+            if success:
+                add_log(f"Sales pitch sent to {customer['email']}", "success")
+                st.success(f"Sales pitch sent to {customer['email']}")
+            else:
+                add_log(f"Failed to send sales pitch to {customer['email']}", "error")
+                st.error("Failed to send sales pitch")
+
+        except Exception as e:
+            add_log(f"Sales pitch sending error: {e}", "error")
+            st.error(f"Error: {e}")
 
 
 if __name__ == "__main__":

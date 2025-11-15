@@ -9,6 +9,14 @@ from datetime import timedelta
 
 import config
 
+# Detect moviepy availability once and reuse
+try:
+    import moviepy.editor as _moviepy_editor  # type: ignore
+    MOVIEPY_AVAILABLE = True
+except Exception:
+    _moviepy_editor = None
+    MOVIEPY_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -34,11 +42,16 @@ def create_text_clip(
     Returns:
         TextClip with background
     """
+    if not MOVIEPY_AVAILABLE:
+        raise RuntimeError(
+            "MoviePy is not installed. Install with `pip install moviepy` and ensure ffmpeg is available on PATH."
+        )
+
     from moviepy.editor import TextClip, CompositeVideoClip, ColorClip
-    
+
     # Create background
     bg = ColorClip(size=size, color=bg_color, duration=duration)
-    
+
     # Create text
     txt = TextClip(
         text,
@@ -48,7 +61,7 @@ def create_text_clip(
         method='caption',
         align='center'
     ).set_duration(duration)
-    
+
     # Composite
     return CompositeVideoClip([bg, txt.set_position('center')])
 
@@ -69,14 +82,19 @@ def create_image_clip(
     Returns:
         ImageClip
     """
+    if not MOVIEPY_AVAILABLE:
+        raise RuntimeError(
+            "MoviePy is not installed. Install with `pip install moviepy` and ensure ffmpeg is available on PATH."
+        )
+
     from moviepy.editor import ImageClip
-    
+
     clip = ImageClip(str(image_path)).set_duration(duration)
-    
+
     # Resize to fit
     clip = clip.resize(height=size[1] if clip.h > clip.w else None,
                        width=size[0] if clip.w > clip.h else None)
-    
+
     # Center on canvas
     from moviepy.editor import CompositeVideoClip, ColorClip
     bg = ColorClip(size=size, color=(0, 0, 0), duration=duration)
@@ -113,6 +131,12 @@ def assemble_customer_video(
         ...     cover_image, audio, Path("output.mp4")
         ... )
     """
+    if not MOVIEPY_AVAILABLE:
+        logger.error(
+            "MoviePy not available: video generation skipped. Install 'moviepy' and ensure ffmpeg is installed on the system."
+        )
+        return None
+
     try:
         from moviepy.editor import (
             VideoClip, ImageClip, AudioFileClip, 
@@ -233,6 +257,12 @@ def create_simple_video_from_images(
     Returns:
         Path to saved video or None if failed
     """
+    if not MOVIEPY_AVAILABLE:
+        logger.error(
+            "MoviePy not available: simple video creation skipped. Install 'moviepy' and ensure ffmpeg is installed on the system."
+        )
+        return None
+
     try:
         from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
         
