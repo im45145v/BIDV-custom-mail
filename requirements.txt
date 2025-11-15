@@ -12,6 +12,7 @@ faker>=20.0.0
 # Visualization
 matplotlib>=3.7.0
 plotly>=5.17.0
+kaleido>=0.2.1  # For plotly static image export
 
 # Text-to-speech
 pyttsx3>=2.90

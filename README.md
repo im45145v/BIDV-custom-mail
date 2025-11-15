@@ -1,6 +1,6 @@
-# 📊 AI-Powered Business Intelligence Reports
+# 📊 AI-Powered Personalized Sales Pitch System
 
-A production-ready Python + Streamlit application that implements a complete AI-powered Business Intelligence pipeline with data generation, analysis, visualization, audio narration, optional AI media generation (OpenAI/Gemini), automatic video assembly, and email delivery via Google Apps Script webhook.
+A production-ready Python + Streamlit application that implements a complete AI-powered sales intelligence pipeline with 1000-customer dataset generation, personalized sales pitch generation, advanced analytics, multi-chart visualizations, Gemini Veo video integration, and automated email delivery.
 
 ![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.30+-red.svg)
@@ -8,17 +8,20 @@ A production-ready Python + Streamlit application that implements a complete AI-
 
 ## 🎯 What This Does
 
-This project automates the entire BI reporting workflow:
+This project automates the entire personalized sales pitch workflow:
 
-1. **📈 Generates synthetic customer and order data** using Faker for realistic business scenarios
-2. **🔍 Analyzes KPIs** including total spend, average order value, order frequency, and category preferences
-3. **📊 Creates visualizations** with matplotlib and plotly for spending trends and category distributions
-4. **🔊 Generates audio summaries** using TTS (pyttsx3/gTTS) for each customer
-5. **🎨 Creates AI-generated images** (optional: OpenAI DALL-E or Google Gemini) or placeholder images
-6. **🎬 Assembles video reports** combining charts, images, and audio narration using MoviePy
-7. **📧 Sends email reports** via Google Apps Script webhook with HTML templates
+1. **📈 Generates 1000 synthetic customer records** with realistic behavior patterns and personalization data
+2. **🎯 Creates personalized sales pitches** based on customer segments, pain points, and buying behaviors
+3. **🔍 Analyzes comprehensive KPIs** including engagement scores, lifetime value, and response rates
+4. **📊 Visualizes with 10+ chart types** including heatmaps, funnels, cohort analysis, and radar charts
+5. **🔊 Generates audio summaries** using TTS (pyttsx3/gTTS) for each customer
+6. **🎨 Creates AI-generated images** (optional: OpenAI DALL-E or Google Gemini) or placeholder images
+7. **🎬 Assembles video reports** with Gemini Veo (when available) or MoviePy fallback
+8. **📧 Sends personalized emails** via fun Google Apps Script webhook with happiness tracking
+9. **📤 Supports dataset upload** for custom customer data analysis
+10. **📊 Provides "All Users Analytics"** dashboard with business-wide insights
 
-All controlled through a beautiful, interactive **Streamlit dashboard**!
+All controlled through a beautiful, two-tab **Streamlit dashboard**!
 
 ## 🎓 Student-Friendly
 
@@ -139,24 +142,40 @@ The dashboard will open in your browser at `http://localhost:8501`
 
 ## 📱 Using the Dashboard
 
-### 1. Generate Data
-- Click **"Generate Data"** in the sidebar to create synthetic customers and orders
-- This creates 25 customers with 3-5 orders each (last 180 days)
+### 1. Generate or Upload Data
+- Click **"Generate Data"** in sidebar to create 1000 customers with 4000+ orders
+- Or **"Upload Custom Dataset"** with your own CSV files
+- Download **"Example Dataset"** (50 customers) as a template
 
 ### 2. Select a Customer
-- Use the dropdown to select a customer
-- View their profile, segment, and interests
+- Use the dropdown to select any customer
+- View their full profile with engagement metrics
 
-### 3. View Analytics
-- See KPIs: Total Spend, Order Count, Average Order Value, Order Frequency
+### 3. View Customer Analytics (Tab 1)
+- See personalized KPIs: Total Spend, Orders, AOV, Engagement Score
 - Interactive charts: Spending trend and category distribution
+- View customer segment, interests, pain points, and buying behavior
 
-### 4. Generate Media
+### 4. Generate Sales Pitch
+- Click **"Generate Sales Pitch"** to create personalized pitch
+- View subject line, opening, body, CTA, and recommendations
+- Pitch addresses customer's specific pain points and interests
+
+### 5. View All Users Analytics (Tab 2)
+- Overall business metrics dashboard
+- Customer journey funnel visualization
+- Engagement heatmaps by segment and behavior
+- Lifetime value distribution analysis
+- Segment performance radar charts
+- Revenue trends and cohort retention
+- Interactive data table with filters
+
+### 6. Generate Media
 - **Generate Audio**: Creates TTS narration of the customer summary
-- **Generate Video**: Assembles a 15-30s video report with charts and narration
-- **Send Email**: Delivers HTML email via Apps Script webhook (requires setup)
+- **Generate Video**: Assembles a video with charts and narration (Gemini Veo or MoviePy)
+- **Send Email**: Delivers personalized sales pitch via Apps Script webhook
 
-### 5. Download/Preview
+### 7. Download/Preview
 - Audio player for generated summaries
 - Video player for generated reports
 - Download button for video files

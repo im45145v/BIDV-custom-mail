@@ -54,6 +54,14 @@ def generate_synthetic_data() -> Tuple[pd.DataFrame, pd.DataFrame]:
             num_interests = random.randint(2, 4)
             interests = random.sample(config.INTEREST_POOL, num_interests)
             
+            # New personalization fields
+            engagement_score = random.randint(20, 100)
+            preferred_contact_time = random.choice(config.CONTACT_TIMES)
+            num_pain_points = random.randint(1, 3)
+            pain_points = random.sample(config.PAIN_POINTS_POOL, num_pain_points)
+            buying_behavior = random.choice(config.BUYING_BEHAVIORS)
+            response_rate = round(random.uniform(0.1, 0.9), 2)
+            
             customer = Customer(
                 customer_id=cust_id,
                 name=fake.name(),
@@ -61,7 +69,13 @@ def generate_synthetic_data() -> Tuple[pd.DataFrame, pd.DataFrame]:
                 segment=segment,
                 interests=interests,
                 last_contact_date=last_contact,
-                created_at=created_at
+                created_at=created_at,
+                engagement_score=engagement_score,
+                preferred_contact_time=preferred_contact_time,
+                pain_points=pain_points,
+                buying_behavior=buying_behavior,
+                response_rate=response_rate,
+                lifetime_value=None  # Will be calculated after orders
             )
             customers.append(customer.model_dump())
             
@@ -113,6 +127,10 @@ def generate_synthetic_data() -> Tuple[pd.DataFrame, pd.DataFrame]:
     customers_df = pd.DataFrame(customers)
     orders_df = pd.DataFrame(orders)
     
+    # Calculate lifetime value for each customer
+    customer_totals = orders_df.groupby('customer_id')['amount'].sum()
+    customers_df['lifetime_value'] = customers_df['customer_id'].map(customer_totals).fillna(0)
+    
     return customers_df, orders_df
 
 
@@ -161,9 +179,68 @@ def load_data() -> Tuple[pd.DataFrame, pd.DataFrame]:
     ).dt.date
     orders_df['order_date'] = pd.to_datetime(orders_df['order_date']).dt.date
     
-    # Parse interests from string representation
+    # Parse interests and pain_points from string representation
     import ast
     customers_df['interests'] = customers_df['interests'].apply(ast.literal_eval)
+    if 'pain_points' in customers_df.columns:
+        customers_df['pain_points'] = customers_df['pain_points'].apply(ast.literal_eval)
+    
+    return customers_df, orders_df
+
+
+def load_uploaded_data(customers_file, orders_file) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Load customer and order data from uploaded files.
+    
+    Args:
+        customers_file: Uploaded customers CSV file
+        orders_file: Uploaded orders CSV file
+    
+    Returns:
+        Tuple of (customers_df, orders_df)
+    """
+    customers_df = pd.read_csv(customers_file)
+    orders_df = pd.read_csv(orders_file)
+    
+    # Convert date strings to date objects
+    customers_df['last_contact_date'] = pd.to_datetime(
+        customers_df['last_contact_date']
+    ).dt.date
+    customers_df['created_at'] = pd.to_datetime(
+        customers_df['created_at']
+    ).dt.date
+    orders_df['order_date'] = pd.to_datetime(orders_df['order_date']).dt.date
+    
+    # Parse interests and pain_points from string representation
+    import ast
+    if 'interests' in customers_df.columns:
+        customers_df['interests'] = customers_df['interests'].apply(
+            lambda x: ast.literal_eval(x) if isinstance(x, str) else x
+        )
+    if 'pain_points' in customers_df.columns:
+        customers_df['pain_points'] = customers_df['pain_points'].apply(
+            lambda x: ast.literal_eval(x) if isinstance(x, str) else x
+        )
+    
+    return customers_df, orders_df
+
+
+def create_example_dataset() -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Create an example dataset for download.
+    This generates a smaller dataset (50 customers) as an example template.
+    
+    Returns:
+        Tuple of (customers_df, orders_df)
+    """
+    # Temporarily override NUM_CUSTOMERS
+    original_num = config.NUM_CUSTOMERS
+    config.NUM_CUSTOMERS = 50
+    
+    customers_df, orders_df = generate_synthetic_data()
+    
+    # Restore original value
+    config.NUM_CUSTOMERS = original_num
     
     return customers_df, orders_df
 
