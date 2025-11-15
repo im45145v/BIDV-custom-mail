@@ -5,6 +5,10 @@ Creates personalized sales pitches and recommendations based on customer pattern
 from typing import Dict, Any, List
 import random
 import logging
+from pathlib import Path
+
+# Optional video prompt generation
+from media import video as media_video
 
 # Local notifier client
 from notifier import email_webhook

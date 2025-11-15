@@ -9,13 +9,35 @@ from datetime import timedelta
 
 import config
 
-# Detect moviepy availability once and reuse
+# Optional VEO3 remote generator (prompt-based)
 try:
-    import moviepy.editor as _moviepy_editor  # type: ignore
-    MOVIEPY_AVAILABLE = True
+    from media import veo3 as _veo3  # type: ignore
+    VEO3_AVAILABLE = bool(getattr(_veo3, 'VEO3_API_URL', None) or _veo3.VEO3Client().is_configured())
 except Exception:
-    _moviepy_editor = None
-    MOVIEPY_AVAILABLE = False
+    _veo3 = None
+    VEO3_AVAILABLE = False
+
+_moviepy_editor = None
+MOVIEPY_AVAILABLE = False
+
+def ensure_moviepy_available() -> bool:
+    """Try to import MoviePy dynamically and set module-level flags.
+
+    Calling this at runtime lets the code pick up a MoviePy install made
+    after the process started (useful during interactive development).
+    """
+    global _moviepy_editor, MOVIEPY_AVAILABLE
+    if MOVIEPY_AVAILABLE and _moviepy_editor is not None:
+        return True
+    try:
+        import moviepy.editor as _m  # type: ignore
+        _moviepy_editor = _m
+        MOVIEPY_AVAILABLE = True
+        return True
+    except Exception:
+        _moviepy_editor = None
+        MOVIEPY_AVAILABLE = False
+        return False
 
 logger = logging.getLogger(__name__)
 
@@ -42,9 +64,9 @@ def create_text_clip(
     Returns:
         TextClip with background
     """
-    if not MOVIEPY_AVAILABLE:
+    if not ensure_moviepy_available():
         raise RuntimeError(
-            "MoviePy is not installed. Install with `pip install moviepy` and ensure ffmpeg is available on PATH."
+            "MoviePy is not installed or could not be imported. Install with `pip install moviepy` and ensure ffmpeg is available on PATH."
         )
 
     from moviepy.editor import TextClip, CompositeVideoClip, ColorClip
@@ -82,9 +104,9 @@ def create_image_clip(
     Returns:
         ImageClip
     """
-    if not MOVIEPY_AVAILABLE:
+    if not ensure_moviepy_available():
         raise RuntimeError(
-            "MoviePy is not installed. Install with `pip install moviepy` and ensure ffmpeg is available on PATH."
+            "MoviePy is not installed or could not be imported. Install with `pip install moviepy` and ensure ffmpeg is available on PATH."
         )
 
     from moviepy.editor import ImageClip
@@ -131,7 +153,7 @@ def assemble_customer_video(
         ...     cover_image, audio, Path("output.mp4")
         ... )
     """
-    if not MOVIEPY_AVAILABLE:
+    if not ensure_moviepy_available():
         logger.error(
             "MoviePy not available: video generation skipped. Install 'moviepy' and ensure ffmpeg is installed on the system."
         )
@@ -257,7 +279,7 @@ def create_simple_video_from_images(
     Returns:
         Path to saved video or None if failed
     """
-    if not MOVIEPY_AVAILABLE:
+    if not ensure_moviepy_available():
         logger.error(
             "MoviePy not available: simple video creation skipped. Install 'moviepy' and ensure ffmpeg is installed on the system."
         )
@@ -304,6 +326,51 @@ def create_simple_video_from_images(
     except Exception as e:
         logger.error(f"Simple video creation error: {e}")
         return None
+
+
+def generate_video_from_prompt(
+    prompt: str,
+    output_path: Path,
+    use_veo_if_available: bool = True,
+    veo_options: Optional[Dict] = None,
+    timeout_seconds: Optional[int] = None,
+) -> Optional[Path]:
+    """Generate a video from a text prompt.
+
+    Behavior:
+    - If `use_veo_if_available` is True and a VEO3 endpoint/key is configured,
+      submit the prompt to the remote VEO3 service via `media.veo3.generate_video_with_veo3()`.
+    - Otherwise, this function returns None (no local prompt->video generator implemented).
+
+    Returns the `output_path` on success, or `None` on failure.
+    """
+    logger.info("generate_video_from_prompt: use_veo_if_available=%s, VEO3_AVAILABLE=%s", use_veo_if_available, VEO3_AVAILABLE)
+
+    if use_veo_if_available and VEO3_AVAILABLE and _veo3 is not None:
+        try:
+            timeout = timeout_seconds or _veo3.POLL_MAX_SECONDS
+            res = _veo3.generate_video_with_veo3(
+                prompt=prompt,
+                output_path=output_path,
+                api_url=None,
+                api_key=None,
+                options=veo_options,
+                timeout_seconds=timeout,
+            )
+            if res:
+                logger.info("VEO3 prompt video generation succeeded: %s", output_path)
+                return res
+            else:
+                logger.error("VEO3 prompt video generation failed for prompt: %s", prompt)
+                return None
+        except Exception as e:
+            logger.exception("Error while generating video with VEO3: %s", e)
+            return None
+
+    logger.error(
+        "No remote VEO3 configured (VEO3_API_URL). To enable prompt-based video generation set `config.VEO3_API_URL` or provide provider credentials."
+    )
+    return None
 
 
 if __name__ == "__main__":
