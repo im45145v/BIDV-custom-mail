@@ -22,7 +22,8 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 APPS_SCRIPT_WEBHOOK_URL = os.getenv("APPS_SCRIPT_WEBHOOK_URL", "")
-
+APPS_SCRIPT_WEBHOOK_SECRET = os.getenv("APPS_SCRIPT_WEBHOOK_SECRET", "")
+APPS_SCRIPT_WEBHOOK_SECRET = os.getenv("APPS_SCRIPT_WEBHOOK_SECRET", "")
 # Data generation settings
 RANDOM_SEED = 42
 NUM_CUSTOMERS = 25
@@ -60,8 +61,9 @@ VIDEO_FPS = 24
 VIDEO_DURATION_RANGE = (15, 30)
 
 # TTS settings
-TTS_ENGINE = "pyttsx3"  # or "gtts"
-TTS_RATE = 150  # words per minute for pyttsx3
+# Choose engine via env var so it's easy to switch in different environments
+TTS_ENGINE = os.getenv("TTS_ENGINE", "pyttsx3")  # or "gtts"
+TTS_RATE = int(os.getenv("TTS_RATE", "150"))  # words per minute for pyttsx3
 
 # Image generation settings
 AI_IMAGE_SIZE = "1024x1024"

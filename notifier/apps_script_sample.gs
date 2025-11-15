@@ -32,48 +32,96 @@
  */
 function doPost(e) {
   try {
+    // Validate request body exists (guard against redirects that drop the body)
+    if (!e || !e.postData || !e.postData.contents) {
+      Logger.log('doPost called with missing postData or empty body. e=' + JSON.stringify(e));
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        error: 'Missing request body (postData). Ensure you POST JSON with Content-Type: application/json and follow redirects correctly.'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     // Parse JSON payload
     var data = JSON.parse(e.postData.contents);
-    
+
+    // Secret check (recommended)
+    var expected = PropertiesService.getScriptProperties().getProperty('WEBHOOK_SECRET') || '';
+    var provided = data.secret || '';
+    if (!expected || provided !== expected) {
+      Logger.log('Unauthorized request: secret mismatch. Provided=' + provided);
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        error: 'Unauthorized: invalid secret'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     // Validate required fields
     if (!data.to || !data.subject || !data.htmlBody) {
       return ContentService.createTextOutput(JSON.stringify({
         success: false,
-        error: "Missing required fields: to, subject, htmlBody"
+        error: 'Missing required fields: to, subject, htmlBody'
       })).setMimeType(ContentService.MimeType.JSON);
     }
-    
+
     // Prepare email options
     var emailOptions = {
       htmlBody: data.htmlBody,
-      name: "AI BI Reports System"
+      name: data.fromName || 'AI BI Reports System'
     };
-    
-    // Note: Google Apps Script doesn't support direct URL attachments
-    // If you need attachments, you'd need to download them first
-    // or include them as inline images in the HTML
-    
+
+    // Download attachments if provided (attachments must be publicly accessible URLs)
+    if (Array.isArray(data.attachments) && data.attachments.length) {
+      var blobs = [];
+      for (var i = 0; i < data.attachments.length; i++) {
+        try {
+          var url = data.attachments[i];
+          if (!url) continue;
+          var resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
+          if (resp && resp.getResponseCode && resp.getResponseCode() === 200) {
+            var blob = resp.getBlob();
+            // Provide a filename if possible
+            var contentType = blob.getContentType();
+            var filename = 'attachment_' + (i + 1);
+            if (contentType) {
+              if (contentType.indexOf('pdf') !== -1) filename += '.pdf';
+              else if (contentType.indexOf('png') !== -1) filename += '.png';
+              else if (contentType.indexOf('jpeg') !== -1 || contentType.indexOf('jpg') !== -1) filename += '.jpg';
+            }
+            try { blob.setName(filename); } catch (setNameErr) { /* ignore */ }
+            blobs.push(blob);
+          } else {
+            Logger.log('Attachment fetch non-200 for URL: ' + url + ' code=' + (resp && resp.getResponseCode()));
+          }
+        } catch (fetchErr) {
+          Logger.log('Attachment fetch error for URL: ' + data.attachments[i] + ' error=' + fetchErr.toString());
+        }
+      }
+      if (blobs.length) {
+        emailOptions.attachments = blobs;
+      }
+    }
+
     // Send email using GmailApp
     GmailApp.sendEmail(
       data.to,
       data.subject,
-      "Please view this email in an HTML-capable email client.",
+      'Please view this email in an HTML-capable email client.',
       emailOptions
     );
-    
+
     // Log success
-    Logger.log("Email sent successfully to: " + data.to);
-    
+    Logger.log('Email sent successfully to: ' + data.to);
+
     // Return success response
     return ContentService.createTextOutput(JSON.stringify({
       success: true,
-      message: "Email sent successfully"
+      message: 'Email sent successfully'
     })).setMimeType(ContentService.MimeType.JSON);
-    
+
   } catch (error) {
     // Log error
-    Logger.log("Error sending email: " + error.toString());
-    
+    Logger.log('doPost error: ' + error.toString());
+
     // Return error response
     return ContentService.createTextOutput(JSON.stringify({
       success: false,

@@ -127,7 +127,7 @@ def main():
         
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("🔄 Generate Data", use_container_width=True):
+            if st.button("🔄 Generate Data", width='stretch'):
                 with st.spinner("Generating synthetic data..."):
                     try:
                         customers_df, orders_df = generator.generate_synthetic_data()
@@ -141,7 +141,7 @@ def main():
                         st.error(f"Error: {e}")
         
         with col2:
-            if st.button("📥 Reload Data", use_container_width=True):
+            if st.button("📥 Reload Data", width='stretch'):
                 st.session_state.customers_df = None
                 st.session_state.orders_df = None
                 load_data_if_needed()
@@ -183,13 +183,13 @@ def main():
         if st.session_state.selected_customer_id:
             st.subheader("⚡ Actions")
             
-            if st.button("🔊 Generate Audio", use_container_width=True):
+            if st.button("🔊 Generate Audio", width='stretch'):
                 generate_audio_action(st.session_state.selected_customer_id)
             
-            if st.button("🎬 Generate Video", use_container_width=True):
+            if st.button("🎬 Generate Video", width='stretch'):
                 generate_video_action(st.session_state.selected_customer_id, use_openai, use_gemini)
             
-            if st.button("📧 Send Email", use_container_width=True):
+            if st.button("📧 Send Email", width='stretch'):
                 send_email_action(st.session_state.selected_customer_id)
     
     # Main content
@@ -305,7 +305,7 @@ def display_customer_dashboard(customer_id: str):
         trend_df = analysis.get_recent_trend(customer_id, orders_df, days=90)
         if len(trend_df) > 0:
             fig = visuals.create_plotly_spend_chart(trend_df, customer['name'])
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         else:
             st.info("No recent orders to display.")
     
@@ -317,7 +317,7 @@ def display_customer_dashboard(customer_id: str):
             fig = px.bar(category_df, x='amount', y='category', orientation='h',
                         labels={'amount': 'Spend (₹)', 'category': 'Category'})
             fig.update_layout(showlegend=False)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         else:
             st.info("No orders to display.")
     

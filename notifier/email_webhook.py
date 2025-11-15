@@ -45,7 +45,8 @@ def send_email_webhook(
         "to": to_email,
         "subject": subject,
         "htmlBody": html_body,
-        "attachments": attachments or []
+        "attachments": attachments or [],
+        "secret": config.APPS_SCRIPT_WEBHOOK_SECRET
     }
     
     try:

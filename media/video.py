@@ -9,6 +9,9 @@ from datetime import timedelta
 
 import config
 
+import subprocess
+import tempfile
+
 logger = logging.getLogger(__name__)
 
 
@@ -113,27 +116,28 @@ def assemble_customer_video(
         ...     cover_image, audio, Path("output.mp4")
         ... )
     """
+    # Try using moviepy if available, otherwise fall back to ffmpeg subprocess
     try:
         from moviepy.editor import (
-            VideoClip, ImageClip, AudioFileClip, 
+            VideoClip, ImageClip, AudioFileClip,
             CompositeVideoClip, concatenate_videoclips
         )
-        
+
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         size = config.VIDEO_RESOLUTION
         fps = config.VIDEO_FPS
         clips = []
-        
+
         # Calculate durations
         if audio_path and audio_path.exists():
             audio = AudioFileClip(str(audio_path))
             audio_duration = audio.duration
-            clip_duration = audio_duration / 4  # Split across 4 sections
+            clip_duration = max(3.0, audio_duration / 4)  # Split across sections
         else:
             audio = None
             clip_duration = 4.0  # Default 4 seconds per section
-        
+
         # 1. Intro card with name and segment
         intro_text = f"{customer_name}\nSegment: {segment.upper()}"
         try:
@@ -141,7 +145,7 @@ def assemble_customer_video(
             clips.append(intro_clip)
         except Exception as e:
             logger.warning(f"Failed to create intro clip: {e}")
-        
+
         # 2. Cover image
         if cover_image and cover_image.exists():
             try:
@@ -149,46 +153,46 @@ def assemble_customer_video(
                 clips.append(cover_clip)
             except Exception as e:
                 logger.warning(f"Failed to create cover clip: {e}")
-        
+
         # 3. Spend over time chart
         if 'spend_over_time' in charts and charts['spend_over_time'].exists():
             try:
                 spend_clip = create_image_clip(
-                    charts['spend_over_time'], 
-                    clip_duration, 
+                    charts['spend_over_time'],
+                    clip_duration,
                     size
                 )
                 clips.append(spend_clip)
             except Exception as e:
                 logger.warning(f"Failed to create spend chart clip: {e}")
-        
+
         # 4. Category share chart
         if 'category_share' in charts and charts['category_share'].exists():
             try:
                 category_clip = create_image_clip(
-                    charts['category_share'], 
-                    clip_duration, 
+                    charts['category_share'],
+                    clip_duration,
                     size
                 )
                 clips.append(category_clip)
             except Exception as e:
                 logger.warning(f"Failed to create category chart clip: {e}")
-        
+
         # If no clips, create error message
         if not clips:
             logger.error("No clips could be created")
             return None
-        
+
         # Concatenate all clips
         final_clip = concatenate_videoclips(clips, method="compose")
-        
+
         # Add audio if available
         if audio:
             # Trim or loop audio to match video length
             if audio.duration > final_clip.duration:
                 audio = audio.subclip(0, final_clip.duration)
             final_clip = final_clip.set_audio(audio)
-        
+
         # Write video file
         final_clip.write_videofile(
             str(output_path),
@@ -199,19 +203,75 @@ def assemble_customer_video(
             remove_temp=True,
             logger=None  # Suppress moviepy's verbose logging
         )
-        
+
         # Clean up
         final_clip.close()
         if audio:
             audio.close()
-        
+
         logger.info(f"Video assembled: {output_path}")
         return output_path
-        
+
+    except ModuleNotFoundError:
+        logger.warning("moviepy not available; falling back to ffmpeg subprocess method")
     except Exception as e:
-        logger.error(f"Video assembly error: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Video assembly error with moviepy: {e}")
+
+    # --- Fallback using ffmpeg ---
+    try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Collect image list: intro (generate simple image), cover, charts
+        images = []
+
+        # If cover exists, use it first
+        if cover_image and cover_image.exists():
+            images.append(str(cover_image))
+
+        # Add charts if present
+        for key in ('spend_over_time', 'category_share'):
+            if key in charts and charts[key].exists():
+                images.append(str(charts[key]))
+
+        if not images:
+            logger.error("No images available for ffmpeg fallback")
+            return None
+
+        # Create a temporary file list for ffmpeg concat demuxer
+        with tempfile.TemporaryDirectory() as tmpdir:
+            list_path = Path(tmpdir) / 'images.txt'
+            duration = 4.0
+            with open(list_path, 'w', encoding='utf-8') as fh:
+                for img in images:
+                    fh.write(f"file '{img}'\n")
+                    fh.write(f"duration {duration}\n")
+                # Repeat last file to ensure concat duration handling
+                fh.write(f"file '{images[-1]}'\n")
+
+            cmd = [
+                'ffmpeg', '-y', '-f', 'concat', '-safe', '0', '-i', str(list_path),
+                '-vsync', 'vfr', '-pix_fmt', 'yuv420p', str(output_path)
+            ]
+
+            # If audio is provided, map audio
+            if audio_path and audio_path.exists():
+                cmd = [
+                    'ffmpeg', '-y', '-f', 'concat', '-safe', '0', '-i', str(list_path),
+                    '-i', str(audio_path), '-c:v', 'libx264', '-c:a', 'aac',
+                    '-shortest', str(output_path)
+                ]
+
+            logger.info(f"Running ffmpeg fallback: {' '.join(cmd)}")
+            proc = subprocess.run(cmd, capture_output=True)
+            if proc.returncode != 0:
+                logger.error(f"ffmpeg failed: {proc.stderr.decode('utf-8', errors='ignore')}" )
+                return None
+
+        logger.info(f"Video assembled with ffmpeg: {output_path}")
+        return output_path
+
+    except Exception as e:
+        logger.error(f"FFmpeg fallback failed: {e}")
         return None
 
 
