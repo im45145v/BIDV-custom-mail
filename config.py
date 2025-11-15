@@ -25,7 +25,7 @@ APPS_SCRIPT_WEBHOOK_URL = os.getenv("APPS_SCRIPT_WEBHOOK_URL", "")
 
 # Data generation settings
 RANDOM_SEED = 42
-NUM_CUSTOMERS = 25
+NUM_CUSTOMERS = 1000  # Increased to 1000 for comprehensive dataset
 ORDERS_PER_CUSTOMER_MIN = 3
 ORDERS_PER_CUSTOMER_MAX = 5
 DATA_DAYS_BACK = 180
@@ -53,6 +53,19 @@ INTEREST_POOL = [
     "fitness", "electronics", "books", "home_decor",
     "wellness", "travel", "gaming", "education"
 ]
+
+# Buying behavior types
+BUYING_BEHAVIORS = ["impulse_buyer", "researcher", "bargain_hunter", "loyal", "seasonal"]
+
+# Pain points for targeting
+PAIN_POINTS_POOL = [
+    "budget_conscious", "time_constrained", "quality_focused",
+    "convenience_seeker", "eco_conscious", "tech_savvy",
+    "price_sensitive", "brand_loyal", "novelty_seeker"
+]
+
+# Preferred contact times
+CONTACT_TIMES = ["morning", "afternoon", "evening", "weekend"]
 
 # Video settings
 VIDEO_RESOLUTION = (1280, 720)

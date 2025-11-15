@@ -1,15 +1,18 @@
 """
 Visualization module for creating charts and graphs.
 Uses matplotlib and plotly for consistent, professional charts.
+Enhanced with advanced visualization types for comprehensive analytics.
 """
-from typing import Optional
+from typing import Optional, Dict, Any
 from pathlib import Path
 import pandas as pd
+import numpy as np
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.express as px
+from plotly.subplots import make_subplots
 
 
 def create_spend_over_time_chart(
@@ -305,3 +308,337 @@ def save_all_customer_charts(
     saved_charts['category_share'] = category_path
     
     return saved_charts
+
+
+def create_engagement_heatmap(
+    customers_df: pd.DataFrame,
+    save_path: Optional[Path] = None
+) -> go.Figure:
+    """
+    Create a heatmap showing engagement scores by segment and buying behavior.
+    
+    Args:
+        customers_df: Customer dataframe
+        save_path: Optional path to save the chart
+    
+    Returns:
+        Plotly Figure object
+    """
+    # Pivot data for heatmap
+    if 'engagement_score' in customers_df.columns and 'buying_behavior' in customers_df.columns:
+        pivot_data = customers_df.pivot_table(
+            values='engagement_score',
+            index='segment',
+            columns='buying_behavior',
+            aggfunc='mean'
+        )
+    else:
+        # Return empty figure if columns don't exist
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Engagement data not available",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+        return fig
+    
+    fig = go.Figure(data=go.Heatmap(
+        z=pivot_data.values,
+        x=pivot_data.columns,
+        y=pivot_data.index,
+        colorscale='Viridis',
+        text=pivot_data.values.round(1),
+        texttemplate='%{text}',
+        textfont={"size": 12},
+        colorbar=dict(title="Avg Engagement Score")
+    ))
+    
+    fig.update_layout(
+        title='Customer Engagement Heatmap by Segment & Behavior',
+        xaxis_title='Buying Behavior',
+        yaxis_title='Customer Segment',
+        height=500
+    )
+    
+    if save_path:
+        fig.write_image(str(save_path))
+    
+    return fig
+
+
+def create_funnel_chart(
+    customers_df: pd.DataFrame,
+    orders_df: pd.DataFrame
+) -> go.Figure:
+    """
+    Create a funnel chart showing customer journey stages.
+    
+    Args:
+        customers_df: Customer dataframe
+        orders_df: Orders dataframe
+    
+    Returns:
+        Plotly Figure object
+    """
+    # Calculate funnel metrics
+    total_customers = len(customers_df)
+    active_customers = customers_df[customers_df['segment'] != 'at_risk'].shape[0]
+    returning_plus = customers_df[customers_df['segment'].isin(['returning', 'vip'])].shape[0]
+    vip_customers = customers_df[customers_df['segment'] == 'vip'].shape[0]
+    
+    fig = go.Figure(go.Funnel(
+        y=['All Customers', 'Active', 'Returning+', 'VIP'],
+        x=[total_customers, active_customers, returning_plus, vip_customers],
+        textinfo="value+percent initial",
+        marker=dict(color=['#2196F3', '#4CAF50', '#FF9800', '#FFC107'])
+    ))
+    
+    fig.update_layout(
+        title='Customer Journey Funnel',
+        height=500
+    )
+    
+    return fig
+
+
+def create_cohort_retention_chart(
+    customers_df: pd.DataFrame,
+    orders_df: pd.DataFrame
+) -> go.Figure:
+    """
+    Create a cohort retention analysis chart.
+    
+    Args:
+        customers_df: Customer dataframe
+        orders_df: Orders dataframe
+    
+    Returns:
+        Plotly Figure object
+    """
+    # Simplified retention: customers with orders in different months
+    orders_copy = orders_df.copy()
+    orders_copy['order_date'] = pd.to_datetime(orders_copy['order_date'])
+    orders_copy['month'] = orders_copy['order_date'].dt.to_period('M')
+    
+    # Count unique customers per month
+    monthly_customers = orders_copy.groupby('month')['customer_id'].nunique()
+    
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=[str(m) for m in monthly_customers.index],
+        y=monthly_customers.values,
+        marker_color='#0066cc',
+        name='Active Customers'
+    ))
+    
+    fig.update_layout(
+        title='Monthly Active Customers (Retention Proxy)',
+        xaxis_title='Month',
+        yaxis_title='Number of Active Customers',
+        height=400
+    )
+    
+    return fig
+
+
+def create_ltv_distribution(
+    customers_df: pd.DataFrame
+) -> go.Figure:
+    """
+    Create a distribution chart for customer lifetime value.
+    
+    Args:
+        customers_df: Customer dataframe
+    
+    Returns:
+        Plotly Figure object
+    """
+    if 'lifetime_value' not in customers_df.columns:
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Lifetime value data not available",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+        return fig
+    
+    fig = px.histogram(
+        customers_df,
+        x='lifetime_value',
+        color='segment',
+        nbins=30,
+        title='Customer Lifetime Value Distribution by Segment',
+        labels={'lifetime_value': 'Lifetime Value (₹)', 'count': 'Number of Customers'},
+        color_discrete_map={
+            'new': '#4CAF50',
+            'returning': '#2196F3',
+            'vip': '#FFC107',
+            'at_risk': '#F44336'
+        }
+    )
+    
+    fig.update_layout(height=500)
+    
+    return fig
+
+
+def create_segment_comparison_chart(
+    customers_df: pd.DataFrame,
+    orders_df: pd.DataFrame
+) -> go.Figure:
+    """
+    Create a radar chart comparing segments across multiple metrics.
+    
+    Args:
+        customers_df: Customer dataframe
+        orders_df: Orders dataframe
+    
+    Returns:
+        Plotly Figure object
+    """
+    # Calculate metrics by segment
+    segment_metrics = []
+    
+    for segment in ['new', 'returning', 'vip', 'at_risk']:
+        seg_customers = customers_df[customers_df['segment'] == segment]
+        seg_orders = orders_df[orders_df['customer_id'].isin(seg_customers['customer_id'])]
+        
+        metrics = {
+            'segment': segment,
+            'avg_order_value': seg_orders['amount'].mean() if len(seg_orders) > 0 else 0,
+            'total_orders': len(seg_orders),
+            'avg_engagement': seg_customers['engagement_score'].mean() if 'engagement_score' in seg_customers else 50,
+            'response_rate': seg_customers['response_rate'].mean() if 'response_rate' in seg_customers else 0.5,
+            'customer_count': len(seg_customers)
+        }
+        segment_metrics.append(metrics)
+    
+    # Normalize metrics to 0-100 scale for radar chart
+    metrics_df = pd.DataFrame(segment_metrics)
+    
+    fig = go.Figure()
+    
+    colors = {'new': '#4CAF50', 'returning': '#2196F3', 
+              'vip': '#FFC107', 'at_risk': '#F44336'}
+    
+    for _, row in metrics_df.iterrows():
+        # Normalize each metric to 0-100 scale
+        normalized = [
+            (row['avg_order_value'] / metrics_df['avg_order_value'].max() * 100) if metrics_df['avg_order_value'].max() > 0 else 0,
+            (row['total_orders'] / metrics_df['total_orders'].max() * 100) if metrics_df['total_orders'].max() > 0 else 0,
+            row['avg_engagement'],
+            row['response_rate'] * 100,
+            (row['customer_count'] / metrics_df['customer_count'].max() * 100) if metrics_df['customer_count'].max() > 0 else 0
+        ]
+        
+        fig.add_trace(go.Scatterpolar(
+            r=normalized,
+            theta=['Avg Order Value', 'Total Orders', 'Engagement', 'Response Rate', 'Customer Count'],
+            fill='toself',
+            name=row['segment'].upper(),
+            line_color=colors.get(row['segment'], '#999999')
+        ))
+    
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(visible=True, range=[0, 100])
+        ),
+        showlegend=True,
+        title='Segment Performance Comparison (Normalized)',
+        height=600
+    )
+    
+    return fig
+
+
+def create_monthly_trend_comparison(
+    orders_df: pd.DataFrame
+) -> go.Figure:
+    """
+    Create a line chart comparing revenue trends month-over-month.
+    
+    Args:
+        orders_df: Orders dataframe
+    
+    Returns:
+        Plotly Figure object
+    """
+    orders_copy = orders_df.copy()
+    orders_copy['order_date'] = pd.to_datetime(orders_copy['order_date'])
+    orders_copy['month'] = orders_copy['order_date'].dt.to_period('M')
+    orders_copy['year'] = orders_copy['order_date'].dt.year
+    
+    monthly_revenue = orders_copy.groupby(['year', 'month'])['amount'].sum().reset_index()
+    monthly_revenue['month_str'] = monthly_revenue['month'].astype(str)
+    
+    fig = go.Figure()
+    
+    for year in monthly_revenue['year'].unique():
+        year_data = monthly_revenue[monthly_revenue['year'] == year]
+        fig.add_trace(go.Scatter(
+            x=year_data['month_str'],
+            y=year_data['amount'],
+            mode='lines+markers',
+            name=f'Year {year}',
+            line=dict(width=3),
+            marker=dict(size=8)
+        ))
+    
+    fig.update_layout(
+        title='Revenue Trends: Month-over-Month Comparison',
+        xaxis_title='Month',
+        yaxis_title='Revenue (₹)',
+        height=500,
+        hovermode='x unified'
+    )
+    
+    return fig
+
+
+def create_customer_value_scatter(
+    customers_df: pd.DataFrame,
+    orders_df: pd.DataFrame
+) -> go.Figure:
+    """
+    Create a scatter plot showing customer engagement vs lifetime value.
+    
+    Args:
+        customers_df: Customer dataframe
+        orders_df: Orders dataframe
+    
+    Returns:
+        Plotly Figure object
+    """
+    if 'lifetime_value' not in customers_df.columns or 'engagement_score' not in customers_df.columns:
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Required data not available",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+        return fig
+    
+    fig = px.scatter(
+        customers_df,
+        x='engagement_score',
+        y='lifetime_value',
+        color='segment',
+        size='lifetime_value',
+        hover_data=['name', 'segment', 'buying_behavior'],
+        title='Customer Value Analysis: Engagement vs Lifetime Value',
+        labels={
+            'engagement_score': 'Engagement Score',
+            'lifetime_value': 'Lifetime Value (₹)'
+        },
+        color_discrete_map={
+            'new': '#4CAF50',
+            'returning': '#2196F3',
+            'vip': '#FFC107',
+            'at_risk': '#F44336'
+        }
+    )
+    
+    fig.update_layout(height=600)
+    
+    return fig
+
