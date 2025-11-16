@@ -229,7 +229,7 @@ def generate_sales_pitch_video(
         )
         
         if video_path:
-            logger.info("✓ Video generated successfully with Gemini Veo!")
+            logger.info("Video generated successfully with Gemini Veo!")
             return video_path
         else:
             logger.info("Gemini Veo generation not available, trying fallback...")
@@ -315,7 +315,7 @@ if __name__ == "__main__":
     # Test Gemini Veo integration
     logging.basicConfig(level=logging.INFO)
     
-    print("🎬 Gemini Veo Integration Module")
+    print("Gemini Veo Integration Module")
     print("=" * 50)
     
     status = get_gemini_veo_status()
@@ -323,7 +323,7 @@ if __name__ == "__main__":
     print(f"API Key Configured: {status['api_key_configured']}")
     print(f"\nNotes:")
     for note in status['notes']:
-        print(f"  • {note}")
+        print(f"  - {note}")
     
-    print("\n✓ Module loaded successfully")
+    print("\nModule loaded successfully")
     print("  Ready to use when Gemini Veo API becomes available!")

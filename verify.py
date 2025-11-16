@@ -17,9 +17,9 @@ try:
     from data import generator
     customers_df, orders_df = generator.generate_synthetic_data()
     generator.save_data(customers_df, orders_df)
-    print(f"✓ Generated {len(customers_df)} customers")
-    print(f"✓ Generated {len(orders_df)} orders")
-    print(f"✓ Data saved to CSV files")
+    print(f"Generated {len(customers_df)} customers")
+    print(f"Generated {len(orders_df)} orders")
+    print(f"Data saved to CSV files")
     test1_passed = True
 except Exception as e:
     print(f"✗ Error: {e}")
@@ -36,7 +36,7 @@ try:
     customer_name = customers_df.iloc[0]['name']
     
     kpis = analysis.calculate_customer_kpis(customer_id, customers_df, orders_df)
-    print(f"✓ Calculated KPIs for {customer_name} ({customer_id})")
+    print(f"Calculated KPIs for {customer_name} ({customer_id})")
     print(f"  - Total Spend: ₹{kpis['total_spend']:,.2f}")
     print(f"  - Orders: {kpis['orders_count']}")
     print(f"  - AOV: ₹{kpis['average_order_value']:,.2f}")
@@ -67,7 +67,7 @@ try:
         subdirs['charts']
     )
     
-    print(f"✓ Generated charts for {customer_name}")
+    print(f"Generated charts for {customer_name}")
     for chart_name, chart_path in charts.items():
         print(f"  - {chart_name}: {chart_path.name}")
     test3_passed = True
@@ -94,13 +94,13 @@ try:
     )
     
     if cover_path and cover_path.exists():
-        print(f"✓ Generated placeholder image for {customer_name}")
+        print(f"Generated placeholder image for {customer_name}")
         print(f"  - Segment: {customer['segment']}")
         print(f"  - Interests: {', '.join(customer['interests'][:3])}")
         print(f"  - Path: {cover_path}")
         test4_passed = True
     else:
-        print(f"✗ Failed to generate image")
+        print(f"Failed to generate image")
         test4_passed = False
 except Exception as e:
     print(f"✗ Error: {e}")
@@ -122,10 +122,10 @@ try:
         charts_urls=None
     )
     
-    print(f"✓ Generated HTML email template")
+    print(f"Generated HTML email template")
     print(f"  - Length: {len(html)} characters")
-    print(f"  - Contains customer name: {'✓' if customer_name in html else '✗'}")
-    print(f"  - Contains KPIs: {'✓' if str(kpis['total_spend']) in html else '✗'}")
+    print(f"  - Contains customer name: {'YES' if customer_name in html else 'NO'}")
+    print(f"  - Contains KPIs: {'YES' if str(kpis['total_spend']) in html else 'NO'}")
     test5_passed = True
 except Exception as e:
     print(f"✗ Error: {e}")
@@ -148,7 +148,7 @@ passed = sum(1 for _, result in tests if result)
 total = len(tests)
 
 for test_name, result in tests:
-    status = "✓ PASS" if result else "✗ FAIL"
+    status = "PASS" if result else "FAIL"
     print(f"{test_name:.<40} {status}")
 
 print()
@@ -156,7 +156,7 @@ print(f"Results: {passed}/{total} tests passed")
 print()
 
 if passed == total:
-    print("🎉 All core functionality verified!")
+    print("All core functionality verified.")
     print()
     print("Next steps:")
     print("  1. Run: streamlit run app.py")
@@ -167,5 +167,5 @@ if passed == total:
     print("  6. Generate audio, video, and send email")
     sys.exit(0)
 else:
-    print("⚠️  Some tests failed. Please review errors above.")
+    print("Some tests failed. Please review errors above.")
     sys.exit(1)

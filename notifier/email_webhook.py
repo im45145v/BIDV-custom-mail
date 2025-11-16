@@ -76,12 +76,12 @@ def send_email_webhook(
         result = response.json()
         
         if result.get('success'):
-            logger.info(f"✓ Email sent successfully to {to_email}")
+            logger.info(f"Email sent successfully to {to_email}")
             if 'happinessLevel' in result:
                 logger.info(f"  Happiness Level: {result['happinessLevel']}")
             return True
         else:
-            logger.error(f"✗ Email sending failed: {result.get('error', 'Unknown error')}")
+            logger.error(f"Email sending failed: {result.get('error', 'Unknown error')}")
             return False
             
     except requests.exceptions.RequestException as e:
@@ -117,12 +117,12 @@ def format_customer_email(
     # Prepare video link
     video_link = ""
     if video_url:
-        video_link = f'<a href="{video_url}" class="button">📹 Watch Video Report</a>'
+        video_link = f'<a href="{video_url}" class="button">Watch Video Report</a>'
     
     # Prepare charts link
     charts_link = ""
     if charts_urls:
-        charts_link = f'<a href="{charts_urls[0]}" class="button">📊 View Charts</a>'
+        charts_link = f'<a href="{charts_urls[0]}" class="button">View Charts</a>'
     
     # Format email using template
     html = config.EMAIL_TEMPLATE.format(
@@ -263,4 +263,4 @@ if __name__ == "__main__":
     
     print("Email HTML preview:")
     print(html[:500] + "...")
-    print("\n✓ Email formatting works correctly")
+    print("\nEmail formatting works correctly")
