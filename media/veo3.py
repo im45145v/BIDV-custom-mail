@@ -43,6 +43,16 @@ import config
 
 logger = logging.getLogger(__name__)
 
+# Optional Google GenAI (Veo) SDK support
+try:
+    from google import genai
+    from google.genai import types
+    GENAI_AVAILABLE = True
+except Exception:
+    genai = None
+    types = None
+    GENAI_AVAILABLE = False
+
 # Config keys:
 # - VEO3_API_URL: optional HTTP endpoint to submit video jobs
 # - GOOGLE_API_KEY: if you prefer to use a provider SDK instead, set this
@@ -157,6 +167,80 @@ def generate_video_with_veo3(
         logger.error("VEO3 client is not configured. Set VEO3_API_URL or an API key in config.")
         return None
 
+    # If an API key is provided and the Google GenAI SDK is available, prefer
+    # the SDK `models.generate_videos` method (Veo) which returns a long-running
+    # operation. This provides tighter integration with Gemini Veo models.
+    if client.api_key and GENAI_AVAILABLE:
+        try:
+            logger.info("Using Google GenAI SDK (veo model) to generate video")
+            # Initialize client with v1beta API version required for Veo
+            gen_client = genai.Client(
+                api_key=client.api_key,
+                http_options={'api_version': 'v1beta'}
+            )
+
+            # Model choice can be provided via options, otherwise use a working default
+            model_name = (options or {}).get('model') or 'veo-2.0-generate-001'
+
+            # Build config object if types available
+            gen_config = None
+            if types is not None and options:
+                cfg_kwargs = {}
+                if 'aspect_ratio' in options:
+                    cfg_kwargs['aspect_ratio'] = options['aspect_ratio']
+                if 'duration_seconds' in options:
+                    cfg_kwargs['duration_seconds'] = options['duration_seconds']
+                if 'number_of_videos' in options:
+                    cfg_kwargs['number_of_videos'] = options['number_of_videos']
+                # Add other supported options as needed
+                if cfg_kwargs:
+                    gen_config = types.GenerateVideosConfig(**cfg_kwargs)
+
+            operation = gen_client.models.generate_videos(
+                model=model_name,
+                prompt=prompt,
+                config=gen_config,
+            )
+
+            logger.info("Waiting for Veo operation to complete...")
+            started = time.time()
+            poll_interval = POLL_INTERVAL_SECONDS
+            # Poll operation until done or timeout
+            while not getattr(operation, 'done', False):
+                if time.time() - started > timeout_seconds:
+                    logger.error("Veo SDK operation timed out after %s seconds", timeout_seconds)
+                    return None
+                time.sleep(poll_interval)
+                try:
+                    operation = gen_client.operations.get(operation)
+                except Exception:
+                    logger.debug("Failed to refresh operation; will retry")
+                poll_interval = min(poll_interval * 1.5, 10)
+
+            # Check result for generated videos (use result, not response)
+            result = getattr(operation, 'result', None) or getattr(operation, 'response', None)
+            if result and getattr(result, 'generated_videos', None):
+                generated = result.generated_videos[0]
+                # Download the video file using client.files.download
+                try:
+                    video_ref = getattr(generated, 'video', None)
+                    if not video_ref:
+                        logger.error("Generated video missing 'video' attribute")
+                        return None
+                    gen_client.files.download(file=video_ref, output_file_path=str(output_path))
+                    logger.info("Downloaded Veo video to %s", output_path)
+                    return output_path
+                except Exception as e:
+                    logger.error("Failed to download Veo file: %s", e)
+                    return None
+            else:
+                logger.error("Veo SDK operation completed but returned no videos: %s", result)
+                return None
+        except Exception as e:
+            logger.exception("Veo SDK generation failed: %s", e)
+            # Fall through to HTTP-based submission below
+
+    # Fallback to the generic HTTP-based job submission pathway
     payload = {
         'prompt': prompt,
         'options': options or {},

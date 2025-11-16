@@ -19,6 +19,18 @@ except Exception:
 
 _moviepy_editor = None
 MOVIEPY_AVAILABLE = False
+OPENCV_AVAILABLE = False
+
+def ensure_opencv_available() -> bool:
+    """Check if OpenCV is available for video generation."""
+    global OPENCV_AVAILABLE
+    try:
+        import cv2
+        OPENCV_AVAILABLE = True
+        return True
+    except Exception:
+        OPENCV_AVAILABLE = False
+        return False
 
 def ensure_moviepy_available() -> bool:
     """Try to import MoviePy dynamically and set module-level flags.
@@ -40,6 +52,84 @@ def ensure_moviepy_available() -> bool:
         return False
 
 logger = logging.getLogger(__name__)
+
+def create_video_opencv(image_paths, output_path, audio_path=None, fps=24, duration_per_image=3):
+    """Create video from images using OpenCV - simple and reliable fallback"""
+    import cv2
+    import subprocess
+    
+    if not image_paths:
+        logger.error("No images provided")
+        return None
+    
+    # Read first image to get dimensions
+    first_img = cv2.imread(str(image_paths[0]))
+    if first_img is None:
+        logger.error(f"Failed to read image: {image_paths[0]}")
+        return None
+    
+    height, width = first_img.shape[:2]
+    
+    # Create temporary video without audio
+    temp_video = output_path.parent / 'temp_video.avi'
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')  # XVID codec - widely supported
+    out = cv2.VideoWriter(str(temp_video), fourcc, fps, (width, height))
+    
+    # Add each image as frames
+    for img_path in image_paths:
+        img = cv2.imread(str(img_path))
+        if img is None:
+            logger.warning(f"Skipping invalid image: {img_path}")
+            continue
+        
+        # Resize if needed
+        if img.shape[:2] != (height, width):
+            img = cv2.resize(img, (width, height))
+        
+        # Write frames (duration_per_image seconds per image)
+        for _ in range(fps * duration_per_image):
+            out.write(img)
+    
+    out.release()
+    logger.info(f"Video frames created: {temp_video}")
+    
+    # Add audio if provided using ffmpeg - always convert to MP4
+    if audio_path and audio_path.exists():
+        try:
+            cmd = [
+                'ffmpeg', '-y', '-i', str(temp_video), '-i', str(audio_path),
+                '-c:v', 'libx264', '-c:a', 'aac', '-pix_fmt', 'yuv420p',
+                '-shortest', str(output_path)
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode == 0:
+                temp_video.unlink()
+                logger.info(f"Audio added to video: {output_path}")
+                return output_path
+            else:
+                logger.error(f"FFmpeg error: {result.stderr}")
+                raise Exception("FFmpeg failed")
+        except Exception as e:
+            logger.warning(f"Failed to add audio: {e}")
+            # Convert to MP4 without audio
+            try:
+                cmd = ['ffmpeg', '-y', '-i', str(temp_video), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', str(output_path)]
+                subprocess.run(cmd, check=True, capture_output=True)
+                temp_video.unlink()
+                return output_path
+            except:
+                temp_video.rename(output_path)
+                return output_path
+    else:
+        # Convert to MP4 without audio
+        try:
+            cmd = ['ffmpeg', '-y', '-i', str(temp_video), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', str(output_path)]
+            subprocess.run(cmd, check=True, capture_output=True)
+            temp_video.unlink()
+            return output_path
+        except:
+            temp_video.rename(output_path)
+            return output_path
 
 
 def _create_veo3_prompt_from_pitch(
@@ -145,16 +235,20 @@ def create_image_clip(
             "MoviePy is not installed or could not be imported. Install with `pip install moviepy` and ensure ffmpeg is available on PATH."
         )
 
-    from moviepy.editor import ImageClip
+    from moviepy.editor import ImageClip, CompositeVideoClip, ColorClip
 
     clip = ImageClip(str(image_path)).set_duration(duration)
 
-    # Resize to fit
-    clip = clip.resize(height=size[1] if clip.h > clip.w else None,
-                       width=size[0] if clip.w > clip.h else None)
+    # Get clip dimensions
+    clip_w, clip_h = clip.size if hasattr(clip, 'size') else (clip.w, clip.h)
+    
+    # Resize to fit while maintaining aspect ratio
+    if clip_h > clip_w:
+        clip = clip.resize(height=size[1])
+    else:
+        clip = clip.resize(width=size[0])
 
-    # Center on canvas
-    from moviepy.editor import CompositeVideoClip, ColorClip
+    # Center on black canvas
     bg = ColorClip(size=size, color=(0, 0, 0), duration=duration)
     return CompositeVideoClip([bg, clip.set_position('center')])
 
@@ -217,8 +311,26 @@ def assemble_customer_video(
     
     # Fall back to MoviePy assembly
     if not ensure_moviepy_available():
+        # Try OpenCV as final fallback
+        if ensure_opencv_available():
+            logger.info("Using OpenCV for video assembly (MoviePy not available)")
+            try:
+                # Gather all image paths
+                images = []
+                if cover_image and cover_image.exists():
+                    images.append(cover_image)
+                for chart_path in charts.values():
+                    if chart_path and chart_path.exists():
+                        images.append(chart_path)
+                
+                if images:
+                    return create_video_opencv(images, output_path, audio_path, 
+                                              fps=config.VIDEO_FPS, duration_per_image=4)
+            except Exception as e:
+                logger.error(f"OpenCV video generation failed: {e}")
+        
         logger.error(
-            "MoviePy not available: video generation skipped. Install 'moviepy' and ensure ffmpeg is installed on the system."
+            "No video generation available. Install 'opencv-python' or 'moviepy' and ensure ffmpeg is installed."
         )
         return None
 
@@ -415,8 +527,8 @@ def generate_video_from_prompt(
             res = _veo3.generate_video_with_veo3(
                 prompt=prompt,
                 output_path=output_path,
-                api_url=None,
-                api_key=None,
+                api_url=config.VEO3_API_URL or None,
+                api_key=config.GOOGLE_API_KEY or None,
                 options=veo_options,
                 timeout_seconds=timeout,
             )
