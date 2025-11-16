@@ -22,6 +22,7 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 APPS_SCRIPT_WEBHOOK_URL = os.getenv("APPS_SCRIPT_WEBHOOK_URL", "")
+VEO3_API_URL = os.getenv("VEO3_API_URL", "")  # Veo3 video generation API endpoint
 
 # Data generation settings
 RANDOM_SEED = 42

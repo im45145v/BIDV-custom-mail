@@ -13,13 +13,13 @@ This project automates the entire personalized sales pitch workflow:
 1. **📈 Generates 1000 synthetic customer records** with realistic behavior patterns and personalization data
 2. **🎯 Creates personalized sales pitches** based on customer segments, pain points, and buying behaviors
 3. **🔍 Analyzes comprehensive KPIs** including engagement scores, lifetime value, and response rates
-4. **📊 Visualizes with 10+ chart types** including heatmaps, funnels, cohort analysis, and radar charts
+4. **📊 Visualizes with 15+ chart types** including heatmaps, funnels, cohort analysis, radar charts, channel performance, and buying behavior analysis
 5. **🔊 Generates audio summaries** using TTS (pyttsx3/gTTS) for each customer
 6. **🎨 Creates AI-generated images** (optional: OpenAI DALL-E or Google Gemini) or placeholder images
-7. **🎬 Assembles video reports** with Gemini Veo (when available) or MoviePy fallback
-8. **📧 Sends personalized emails** via fun Google Apps Script webhook with happiness tracking
+7. **🎬 Assembles video reports** with Veo3 AI (using sales pitch prompts) or MoviePy fallback
+8. **📧 Sends personalized emails** via Google Apps Script webhook with happiness tracking
 9. **📤 Supports dataset upload** for custom customer data analysis
-10. **📊 Provides "All Users Analytics"** dashboard with business-wide insights
+10. **📊 Provides "All Users Analytics"** dashboard with comprehensive business-wide insights
 
 All controlled through a beautiful, two-tab **Streamlit dashboard**!
 
@@ -168,11 +168,19 @@ The dashboard will open in your browser at `http://localhost:8501`
 - Lifetime value distribution analysis
 - Segment performance radar charts
 - Revenue trends and cohort retention
+- **NEW: Channel performance analysis** (web/app/store metrics)
+- **NEW: Customer acquisition funnel**
+- **NEW: Product category trends over time**
+- **NEW: Response rate analysis by segment**
+- **NEW: Buying behavior performance metrics**
 - Interactive data table with filters
 
 ### 6. Generate Media
 - **Generate Audio**: Creates TTS narration of the customer summary
-- **Generate Video**: Assembles a video with charts and narration (Gemini Veo or MoviePy)
+- **Generate Video**: 
+  - **NEW: Veo3 AI Video Generation** - Uses sales pitch as prompt to generate AI videos
+  - Fallback: MoviePy assembly with charts and narration
+  - Videos are marked with ✨ indicator when generated with Veo3
 - **Send Email**: Delivers personalized sales pitch via Apps Script webhook
 
 ### 7. Download/Preview
@@ -200,7 +208,18 @@ GOOGLE_API_KEY=your-key-here
 ```
 3. Check "Use Gemini" in the dashboard
 
-**Note:** Without API keys, the system uses PIL-generated placeholder images (still looks great!).
+### Veo3 Video Generation (NEW)
+
+1. Get Veo3 API endpoint URL from your provider
+2. Add to `.env`:
+```env
+VEO3_API_URL=https://your-veo3-api-endpoint.com
+```
+3. Check "Use Veo3 for Video" in the dashboard
+4. Videos will be generated using personalized sales pitch as the prompt
+5. Falls back to MoviePy if Veo3 is unavailable
+
+**Note:** Without API keys, the system uses local alternatives (PIL images, MoviePy videos) - still works great!
 
 ## 📧 Email Delivery Setup
 
@@ -328,13 +347,24 @@ venv\Scripts\activate     # Windows
 - ✅ Plotly for interactive charts
 - ✅ Professional color schemes
 - ✅ Currency formatting
+- ✅ **NEW: 15+ chart types** including:
+  - Channel performance (web, app, store)
+  - Customer acquisition funnel
+  - Product category trends
+  - Response rate analysis
+  - Buying behavior metrics
+  - Engagement heatmaps
+  - LTV distribution
+  - Cohort retention
 
 ### Media Generation
 - ✅ Offline TTS (pyttsx3)
 - ✅ Online TTS fallback (gTTS)
 - ✅ AI image generation (optional)
 - ✅ PIL placeholder images
-- ✅ MoviePy video assembly
+- ✅ **NEW: Veo3 AI video generation** with sales pitch prompts
+- ✅ MoviePy video assembly (fallback)
+- ✅ User-wise video display with generation method indicator
 
 ### Email Delivery
 - ✅ HTML email templates

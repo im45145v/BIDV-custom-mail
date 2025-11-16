@@ -235,6 +235,7 @@ def main():
         st.subheader("AI Options")
         use_openai = st.checkbox("Use OpenAI (DALL-E)", value=False, help="Requires OPENAI_API_KEY in .env")
         use_gemini = st.checkbox("Use Gemini", value=False, help="Requires GOOGLE_API_KEY in .env")
+        use_veo3 = st.checkbox("Use Veo3 for Video", value=False, help="Generate videos with Veo3 using sales pitch")
         
         st.markdown("---")
         
@@ -249,7 +250,7 @@ def main():
                 generate_audio_action(st.session_state.selected_customer_id)
             
             if st.button("Generate Video 🎬", width='stretch'):
-                generate_video_action(st.session_state.selected_customer_id, use_openai, use_gemini)
+                generate_video_action(st.session_state.selected_customer_id, use_openai, use_gemini, use_veo3)
             
             if st.button("Send Sales Pitch ✉️", width='stretch'):
                 send_sales_pitch_action(st.session_state.selected_customer_id)
@@ -431,6 +432,61 @@ def display_all_users_analytics():
         st.plotly_chart(fig_cohort, width='stretch')
     except Exception as e:
         st.error(f"Error creating cohort chart: {e}")
+    
+    st.markdown("---")
+    
+    # NEW CHARTS SECTION
+    st.subheader("📊 Additional Analytics")
+    
+    # Channel Performance
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("**Channel Performance**")
+        try:
+            fig_channel = visuals.create_channel_performance_chart(orders_df)
+            st.plotly_chart(fig_channel, width='stretch')
+        except Exception as e:
+            st.error(f"Error creating channel chart: {e}")
+    
+    with col2:
+        st.write("**Acquisition Funnel**")
+        try:
+            fig_acquisition = visuals.create_acquisition_funnel_chart(customers_df)
+            st.plotly_chart(fig_acquisition, width='stretch')
+        except Exception as e:
+            st.error(f"Error creating acquisition funnel: {e}")
+    
+    st.markdown("---")
+    
+    # Product Category Trends
+    st.subheader("📈 Product Category Trends")
+    try:
+        fig_cat_trends = visuals.create_product_category_trends(orders_df)
+        st.plotly_chart(fig_cat_trends, width='stretch')
+    except Exception as e:
+        st.error(f"Error creating category trends: {e}")
+    
+    st.markdown("---")
+    
+    # Response Rate and Buying Behavior
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("**Response Rate Analysis**")
+        try:
+            fig_response = visuals.create_response_rate_analysis(customers_df)
+            st.plotly_chart(fig_response, width='stretch')
+        except Exception as e:
+            st.error(f"Error creating response rate chart: {e}")
+    
+    with col2:
+        st.write("**Buying Behavior Performance**")
+        try:
+            fig_behavior = visuals.create_buying_behavior_chart(customers_df, orders_df)
+            st.plotly_chart(fig_behavior, width='stretch')
+        except Exception as e:
+            st.error(f"Error creating buying behavior chart: {e}")
     
     # Data table
     st.markdown("---")
@@ -646,7 +702,13 @@ def display_customer_dashboard(customer_id: str):
         video_path = subdirs['video'] / f"report_{customer_id}.mp4"
         if video_path.exists():
             st.video(str(video_path))
-            st.success(f"Video file: {video_path.name}")
+            
+            # Check if video was generated with Veo3
+            veo3_marker = subdirs['video'] / f".veo3_generated_{customer_id}"
+            if veo3_marker.exists():
+                st.success(f"✨ Video generated with Veo3 AI")
+            else:
+                st.success(f"Video file: {video_path.name}")
             
             # Download button
             with open(video_path, 'rb') as f:
@@ -692,7 +754,7 @@ def generate_audio_action(customer_id: str):
             st.error(f"❌ Error: {e}")
 
 
-def generate_video_action(customer_id: str, use_openai: bool, use_gemini: bool):
+def generate_video_action(customer_id: str, use_openai: bool, use_gemini: bool, use_veo3: bool):
     """Generate video for a customer."""
     with st.spinner("Generating video (this may take a minute)..."):
         try:
@@ -703,6 +765,21 @@ def generate_video_action(customer_id: str, use_openai: bool, use_gemini: bool):
             kpis = analysis.calculate_customer_kpis(customer_id, customers_df, orders_df)
             
             subdirs = config.get_customer_subdirs(customer_id)
+            
+            # Generate sales pitch for Veo3
+            sales_pitch_text = None
+            if use_veo3:
+                add_log("Generating sales pitch for Veo3 video...", "info")
+                pitch = sales_pitch.generate_sales_pitch(
+                    customer['name'],
+                    customer['segment'],
+                    customer.get('interests', []),
+                    customer.get('pain_points', []),
+                    customer.get('buying_behavior', 'researcher'),
+                    customer.get('engagement_score', 50),
+                    kpis
+                )
+                sales_pitch_text = pitch.get('full_pitch', pitch.get('body', ''))
             
             # Generate charts
             add_log("Generating charts...", "info")
@@ -747,7 +824,9 @@ def generate_video_action(customer_id: str, use_openai: bool, use_gemini: bool):
                 charts,
                 cover_path,
                 audio_path,
-                subdirs['video'] / f"report_{customer_id}.mp4"
+                subdirs['video'] / f"report_{customer_id}.mp4",
+                use_veo3=use_veo3,
+                sales_pitch=sales_pitch_text
             )
             
             if video_path:
