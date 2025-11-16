@@ -128,6 +128,8 @@ def main():
     # Header
     st.markdown('<div class="main-header">🎯 AI-Powered Sales Pitch Dashboard</div>', unsafe_allow_html=True)
     st.markdown("**Personalized Sales Intelligence with Advanced Analytics & Customer Insights**")
+    st.markdown("**Note: Audio/Video Generation and Email has been disabled. If you want please contact the Repo owner and make them enable it. This has been done keeping in mind that public end points are insecure (Project by Ashish Malla)**")
+
     st.markdown("---")
     
     # Sidebar
