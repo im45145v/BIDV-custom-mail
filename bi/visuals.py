@@ -642,3 +642,348 @@ def create_customer_value_scatter(
     
     return fig
 
+
+def create_channel_performance_chart(
+    orders_df: pd.DataFrame
+) -> go.Figure:
+    """
+    Create a bar chart showing performance metrics by order channel.
+    
+    Args:
+        orders_df: Orders dataframe
+    
+    Returns:
+        Plotly Figure object
+    """
+    if 'channel' not in orders_df.columns:
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Channel data not available",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+        return fig
+    
+    channel_metrics = orders_df.groupby('channel').agg({
+        'amount': ['sum', 'mean', 'count']
+    }).reset_index()
+    
+    channel_metrics.columns = ['channel', 'total_revenue', 'avg_order_value', 'order_count']
+    
+    fig = make_subplots(
+        rows=1, cols=3,
+        subplot_titles=('Total Revenue', 'Average Order Value', 'Order Count'),
+        specs=[[{'type': 'bar'}, {'type': 'bar'}, {'type': 'bar'}]]
+    )
+    
+    colors = {'web': '#0066cc', 'app': '#28a745', 'store': '#FFC107'}
+    
+    for channel in channel_metrics['channel'].unique():
+        channel_data = channel_metrics[channel_metrics['channel'] == channel]
+        color = colors.get(channel, '#999999')
+        
+        fig.add_trace(
+            go.Bar(
+                x=[channel],
+                y=channel_data['total_revenue'],
+                name=channel,
+                marker_color=color,
+                showlegend=False
+            ),
+            row=1, col=1
+        )
+        
+        fig.add_trace(
+            go.Bar(
+                x=[channel],
+                y=channel_data['avg_order_value'],
+                name=channel,
+                marker_color=color,
+                showlegend=False
+            ),
+            row=1, col=2
+        )
+        
+        fig.add_trace(
+            go.Bar(
+                x=[channel],
+                y=channel_data['order_count'],
+                name=channel,
+                marker_color=color,
+                showlegend=True
+            ),
+            row=1, col=3
+        )
+    
+    fig.update_layout(
+        title_text='Channel Performance Analysis',
+        height=400,
+        showlegend=True
+    )
+    
+    fig.update_yaxes(title_text="Revenue (₹)", row=1, col=1)
+    fig.update_yaxes(title_text="Avg Value (₹)", row=1, col=2)
+    fig.update_yaxes(title_text="Orders", row=1, col=3)
+    
+    return fig
+
+
+def create_acquisition_funnel_chart(
+    customers_df: pd.DataFrame
+) -> go.Figure:
+    """
+    Create a detailed customer acquisition and lifecycle funnel.
+    
+    Args:
+        customers_df: Customer dataframe
+    
+    Returns:
+        Plotly Figure object
+    """
+    total = len(customers_df)
+    new_customers = customers_df[customers_df['segment'] == 'new'].shape[0]
+    returning = customers_df[customers_df['segment'] == 'returning'].shape[0]
+    vip = customers_df[customers_df['segment'] == 'vip'].shape[0]
+    
+    # Calculate engagement levels
+    high_engagement = customers_df[customers_df.get('engagement_score', 0) > 70].shape[0]
+    
+    fig = go.Figure(go.Funnel(
+        y=['Total Customers', 'New Customers', 'Returning Customers', 'VIP Customers', 'High Engagement'],
+        x=[total, new_customers, returning, vip, high_engagement],
+        textposition="inside",
+        textinfo="value+percent previous",
+        marker=dict(
+            color=['#0066cc', '#4CAF50', '#2196F3', '#FFC107', '#FF5722'],
+            line=dict(width=2, color='white')
+        ),
+        connector=dict(line=dict(color='#888888', width=2))
+    ))
+    
+    fig.update_layout(
+        title='Customer Acquisition & Lifecycle Funnel',
+        height=500
+    )
+    
+    return fig
+
+
+def create_product_category_trends(
+    orders_df: pd.DataFrame
+) -> go.Figure:
+    """
+    Create a line chart showing product category trends over time.
+    
+    Args:
+        orders_df: Orders dataframe
+    
+    Returns:
+        Plotly Figure object
+    """
+    if 'product_category' not in orders_df.columns:
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Product category data not available",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+        return fig
+    
+    orders_copy = orders_df.copy()
+    orders_copy['order_date'] = pd.to_datetime(orders_copy['order_date'])
+    orders_copy['month'] = orders_copy['order_date'].dt.to_period('M')
+    
+    category_trends = orders_copy.groupby(['month', 'product_category'])['amount'].sum().reset_index()
+    category_trends['month_str'] = category_trends['month'].astype(str)
+    
+    fig = go.Figure()
+    
+    colors = px.colors.qualitative.Set2
+    for i, category in enumerate(category_trends['product_category'].unique()):
+        cat_data = category_trends[category_trends['product_category'] == category]
+        fig.add_trace(go.Scatter(
+            x=cat_data['month_str'],
+            y=cat_data['amount'],
+            mode='lines+markers',
+            name=category.title(),
+            line=dict(width=2, color=colors[i % len(colors)]),
+            marker=dict(size=6)
+        ))
+    
+    fig.update_layout(
+        title='Product Category Revenue Trends Over Time',
+        xaxis_title='Month',
+        yaxis_title='Revenue (₹)',
+        height=500,
+        hovermode='x unified',
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
+    )
+    
+    return fig
+
+
+def create_response_rate_analysis(
+    customers_df: pd.DataFrame
+) -> go.Figure:
+    """
+    Create a chart analyzing customer response rates by segment and behavior.
+    
+    Args:
+        customers_df: Customer dataframe
+    
+    Returns:
+        Plotly Figure object
+    """
+    if 'response_rate' not in customers_df.columns:
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Response rate data not available",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+        return fig
+    
+    # Response rate by segment
+    segment_response = customers_df.groupby('segment')['response_rate'].mean().reset_index()
+    segment_response['response_rate_pct'] = segment_response['response_rate'] * 100
+    
+    fig = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=('Response Rate by Segment', 'Response Rate Distribution'),
+        specs=[[{'type': 'bar'}, {'type': 'box'}]]
+    )
+    
+    colors = {'new': '#4CAF50', 'returning': '#2196F3', 
+              'vip': '#FFC107', 'at_risk': '#F44336'}
+    
+    for segment in segment_response['segment']:
+        seg_data = segment_response[segment_response['segment'] == segment]
+        fig.add_trace(
+            go.Bar(
+                x=[segment],
+                y=seg_data['response_rate_pct'],
+                name=segment,
+                marker_color=colors.get(segment, '#999999'),
+                showlegend=False
+            ),
+            row=1, col=1
+        )
+    
+    # Box plot for distribution
+    for segment in customers_df['segment'].unique():
+        seg_customers = customers_df[customers_df['segment'] == segment]
+        fig.add_trace(
+            go.Box(
+                y=seg_customers['response_rate'] * 100,
+                name=segment,
+                marker_color=colors.get(segment, '#999999')
+            ),
+            row=1, col=2
+        )
+    
+    fig.update_layout(
+        title_text='Customer Response Rate Analysis',
+        height=400,
+        showlegend=False
+    )
+    
+    fig.update_yaxes(title_text="Response Rate (%)", row=1, col=1)
+    fig.update_yaxes(title_text="Response Rate (%)", row=1, col=2)
+    
+    return fig
+
+
+def create_buying_behavior_chart(
+    customers_df: pd.DataFrame,
+    orders_df: pd.DataFrame
+) -> go.Figure:
+    """
+    Create a chart showing metrics by buying behavior type.
+    
+    Args:
+        customers_df: Customer dataframe
+        orders_df: Orders dataframe
+    
+    Returns:
+        Plotly Figure object
+    """
+    if 'buying_behavior' not in customers_df.columns:
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Buying behavior data not available",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+        return fig
+    
+    behavior_metrics = []
+    
+    for behavior in customers_df['buying_behavior'].unique():
+        behav_customers = customers_df[customers_df['buying_behavior'] == behavior]
+        behav_orders = orders_df[orders_df['customer_id'].isin(behav_customers['customer_id'])]
+        
+        metrics = {
+            'behavior': behavior,
+            'customer_count': len(behav_customers),
+            'total_revenue': behav_orders['amount'].sum(),
+            'avg_order_value': behav_orders['amount'].mean() if len(behav_orders) > 0 else 0
+        }
+        behavior_metrics.append(metrics)
+    
+    metrics_df = pd.DataFrame(behavior_metrics)
+    
+    fig = make_subplots(
+        rows=1, cols=3,
+        subplot_titles=('Customer Count', 'Total Revenue', 'Avg Order Value'),
+        specs=[[{'type': 'bar'}, {'type': 'bar'}, {'type': 'bar'}]]
+    )
+    
+    colors = px.colors.qualitative.Set3
+    
+    for i, behavior in enumerate(metrics_df['behavior']):
+        behav_data = metrics_df[metrics_df['behavior'] == behavior]
+        color = colors[i % len(colors)]
+        
+        fig.add_trace(
+            go.Bar(
+                x=[behavior],
+                y=behav_data['customer_count'],
+                marker_color=color,
+                showlegend=False
+            ),
+            row=1, col=1
+        )
+        
+        fig.add_trace(
+            go.Bar(
+                x=[behavior],
+                y=behav_data['total_revenue'],
+                marker_color=color,
+                showlegend=False
+            ),
+            row=1, col=2
+        )
+        
+        fig.add_trace(
+            go.Bar(
+                x=[behavior],
+                y=behav_data['avg_order_value'],
+                marker_color=color,
+                showlegend=True,
+                name=behavior
+            ),
+            row=1, col=3
+        )
+    
+    fig.update_layout(
+        title_text='Performance by Buying Behavior',
+        height=400,
+        showlegend=True
+    )
+    
+    fig.update_yaxes(title_text="Count", row=1, col=1)
+    fig.update_yaxes(title_text="Revenue (₹)", row=1, col=2)
+    fig.update_yaxes(title_text="Avg Value (₹)", row=1, col=3)
+    
+    return fig
+

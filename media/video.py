@@ -42,6 +42,42 @@ def ensure_moviepy_available() -> bool:
 logger = logging.getLogger(__name__)
 
 
+def _create_veo3_prompt_from_pitch(
+    customer_name: str,
+    segment: str,
+    kpis: Dict,
+    sales_pitch: str
+) -> str:
+    """
+    Create a Veo3 video generation prompt from sales pitch and customer data.
+    
+    Args:
+        customer_name: Customer's name
+        segment: Customer segment
+        kpis: Customer KPIs dictionary
+        sales_pitch: Sales pitch text
+    
+    Returns:
+        Formatted prompt string for Veo3 video generation
+    """
+    prompt = f"""Create a professional business video for {customer_name}, a {segment} customer.
+
+Video should include:
+- Customer name and segment introduction
+- Key performance metrics: Total Spend ₹{kpis.get('total_spend', 0):,.0f}, {kpis.get('orders_count', 0)} orders
+- Visual data charts showing spending trends and category distribution
+- Professional business intelligence aesthetic with modern graphics
+
+Sales Message:
+{sales_pitch[:500]}
+
+Style: Professional, data-driven, modern business presentation with smooth transitions.
+Duration: 20-30 seconds
+Quality: HD 720p"""
+    
+    return prompt
+
+
 def create_text_clip(
     text: str,
     duration: float,
@@ -130,7 +166,9 @@ def assemble_customer_video(
     charts: Dict[str, Path],
     cover_image: Optional[Path],
     audio_path: Optional[Path],
-    output_path: Path
+    output_path: Path,
+    use_veo3: bool = False,
+    sales_pitch: Optional[str] = None
 ) -> Optional[Path]:
     """
     Assemble a customer report video.
@@ -143,6 +181,8 @@ def assemble_customer_video(
         cover_image: Path to cover image (optional)
         audio_path: Path to audio narration (optional)
         output_path: Path to save video
+        use_veo3: If True, try to generate video using Veo3 with sales pitch
+        sales_pitch: Sales pitch text to use as Veo3 prompt
     
     Returns:
         Path to saved video or None if failed
@@ -153,6 +193,29 @@ def assemble_customer_video(
         ...     cover_image, audio, Path("output.mp4")
         ... )
     """
+    # Try Veo3 generation first if requested and available
+    if use_veo3 and VEO3_AVAILABLE and sales_pitch:
+        logger.info("Attempting to generate video with Veo3 for %s", customer_name)
+        veo3_prompt = _create_veo3_prompt_from_pitch(
+            customer_name, segment, kpis, sales_pitch
+        )
+        veo3_result = generate_video_from_prompt(
+            prompt=veo3_prompt,
+            output_path=output_path,
+            use_veo_if_available=True,
+            veo_options={'duration': 30, 'resolution': '720p'},
+            timeout_seconds=300
+        )
+        if veo3_result:
+            logger.info("Successfully generated video with Veo3 for %s", customer_name)
+            # Create marker file to indicate Veo3 generation
+            marker_path = output_path.parent / f".veo3_generated_{output_path.stem}"
+            marker_path.touch()
+            return veo3_result
+        else:
+            logger.warning("Veo3 generation failed, falling back to MoviePy assembly")
+    
+    # Fall back to MoviePy assembly
     if not ensure_moviepy_available():
         logger.error(
             "MoviePy not available: video generation skipped. Install 'moviepy' and ensure ffmpeg is installed on the system."
